@@ -11,7 +11,7 @@ import gc
 import json
 import websockets
 import asyncio
-import ssbu
+import roa2
 from tag_matching import findBestMatch
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -106,7 +106,7 @@ def detect_selected_stage():
     if is_within_deviation(pixel, target_color, deviation):
         print("Stage selected")
         stage = read_text(img, (110, 700, 500, 100))
-        payload['stage'] = findBestMatch(stage, ssbu.stages)
+        payload['stage'] = findBestMatch(stage, roa2.stages)
         print("Selected stage:", payload['stage'])
         time.sleep(1)
 
@@ -220,10 +220,10 @@ def detect_versus_screen():
             def read_characters_and_names():
                 # Initialize the reader
                 c1 = read_text(img, (110, 10, 870, 120), True)
-                c1 = findBestMatch(c1, ssbu.characters)
+                c1 = findBestMatch(c1, roa2.characters)
                 print("Player 1 character:", c1)
                 c2 = read_text(img, (1070, 10, 870, 120), True)
-                c2 = findBestMatch(c2, ssbu.characters)
+                c2 = findBestMatch(c2, roa2.characters)
                 print("Player 2 character:", c2)
                 t1 = read_text(img, (5, 155, 240, 50), True)
                 print("Player 1 tag:", t1)
