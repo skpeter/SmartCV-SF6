@@ -19,7 +19,6 @@ config.read('config.ini')
 
 payload = {
     "state": None,
-    "state": None,
     "stage": None,
     "players": [
         {
@@ -39,6 +38,10 @@ payload = {
 previous_states = [None] # list of previous states to be used for state change detection
 reader = easyocr.Reader(['en'])
 refresh_rate = config.getfloat('settings', 'refresh_rate')
+
+# Check if the pixel color is within the deviation range
+def is_within_deviation(color1, color2, deviation):
+    return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
 
 def detect_stage_select_screen():
     global config, payload, previous_states
@@ -65,10 +68,6 @@ def detect_stage_select_screen():
     # Define the target colors and deviation
     target_color = (252, 250, 255)  # white stage width icon
     deviation = 0.1
-    
-    # Check if the pixel color is within the deviation range
-    def is_within_deviation(color1, color2, deviation):
-        return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
     
     if is_within_deviation(pixel, target_color, deviation):
         print("Stage select screen detected")
@@ -107,13 +106,8 @@ def detect_character_select_screen():
     target_color2 = (60, 47, 101)  #(white stopwatch)
     deviation = 0.1
     
-    # Check if the pixel color is within the deviation range
-    def is_within_deviation(color1, color2, deviation):
-        return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
-    
     if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation):
         payload['state'] = "character_select"
-        print("Character select screen detected")
         print("Character select screen detected")
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
@@ -147,7 +141,6 @@ def read_text(img, region):
     else: result = None
 
     # Release memory
-    del cropped_img
     del cropped_img
     gc.collect()
 
@@ -239,10 +232,6 @@ def detect_versus_screen():
     target_color = (252, 250, 255)  #(white rupture between characters on VS screen)
     deviation = 0.1
     
-    # Check if the pixel color is within the deviation range
-    def is_within_deviation(color1, color2, deviation):
-        return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
-    
     if (is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation)) or is_within_deviation(pixel3, target_color, deviation):
         payload['state'] = "in_game"
         if payload['state'] != previous_states[-1]:
@@ -286,11 +275,7 @@ def detect_game_end():
             
     target_color = (0, 0, 0)  #(black letterbox that shows up when game ends)
     deviation = 0.1
-    
-    # Check if the pixel color is within the deviation range
-    def is_within_deviation(color1, color2, deviation):
-        return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
-    
+        
     if (is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation)):
         print("Game end detected")
         if (process_game_end_data(img)):
@@ -313,8 +298,8 @@ def process_game_end_data(img):
     full_data[0:h, 535:535+45] = 0
     
     # Use OCR to read the text from the grayscale image
-    result = reader.readtext(full_data, paragraph=False, allowlist='0123456789%', text_threshold=0.3, low_text=0.3)
-    # print(result)
+    result = reader.readtext(full_data, paragraph=False, allowlist='0123456789%', text_threshold=0.3, low_text=0.2)
+    print(result)
 
     # what this text will extract are for excerpts of numbers. the first is the number of stocks for player 1, the second is the damage received by player 1, the third is the number of stocks for player 2, and the fourth is the damage received by player 2.
     if result:
@@ -379,19 +364,12 @@ async def send_data(websocket):
             if size > 1024 * 1024:  # 1MB
                 print(f"Warning: Large payload size ({size} bytes)")
             refresh_rate = config.getfloat('settings', 'refresh_rate')
-            data = json.dumps(payload)
-            size = len(data.encode('utf-8'))
-            if size > 1024 * 1024:  # 1MB
-                print(f"Warning: Large payload size ({size} bytes)")
-            refresh_rate = config.getfloat('settings', 'refresh_rate')
             await websocket.send(json.dumps(payload))
             await asyncio.sleep(refresh_rate)
     except websockets.exceptions.ConnectionClosedOK:
         # print("Connection closed normally by client")
-        # print("Connection closed normally by client")
         pass
     except websockets.exceptions.ConnectionClosedError as e:
-        print(f"Connection closed with error: {e}")
         print(f"Connection closed with error: {e}")
         pass
     except Exception as e:
