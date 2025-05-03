@@ -19,6 +19,7 @@ config.read('config.ini')
 
 payload = {
     "state": None,
+    "state": None,
     "stage": None,
     "players": [
         {
@@ -45,6 +46,7 @@ def detect_stage_select_screen():
     
     # Get the feed path from the config file
     feed_path = config.get('settings', 'feed_path')
+
 
     while True:
         try:
@@ -112,6 +114,7 @@ def detect_character_select_screen():
     if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation):
         payload['state'] = "character_select"
         print("Character select screen detected")
+        print("Character select screen detected")
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
             #clean up some more player information
@@ -133,6 +136,7 @@ def read_text(img, region):
     # Convert stage_img from PIL.Image to cv2
     cropped_img = cv2.cvtColor(np.array(cropped_img), cv2.COLOR_RGB2GRAY)
         
+        
     # Use OCR to read the text from the image
     result = reader.readtext(cropped_img, paragraph=False)
 
@@ -143,6 +147,7 @@ def read_text(img, region):
     else: result = None
 
     # Release memory
+    del cropped_img
     del cropped_img
     gc.collect()
 
@@ -374,12 +379,19 @@ async def send_data(websocket):
             if size > 1024 * 1024:  # 1MB
                 print(f"Warning: Large payload size ({size} bytes)")
             refresh_rate = config.getfloat('settings', 'refresh_rate')
+            data = json.dumps(payload)
+            size = len(data.encode('utf-8'))
+            if size > 1024 * 1024:  # 1MB
+                print(f"Warning: Large payload size ({size} bytes)")
+            refresh_rate = config.getfloat('settings', 'refresh_rate')
             await websocket.send(json.dumps(payload))
             await asyncio.sleep(refresh_rate)
     except websockets.exceptions.ConnectionClosedOK:
         # print("Connection closed normally by client")
+        # print("Connection closed normally by client")
         pass
     except websockets.exceptions.ConnectionClosedError as e:
+        print(f"Connection closed with error: {e}")
         print(f"Connection closed with error: {e}")
         pass
     except Exception as e:

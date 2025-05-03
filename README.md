@@ -2,7 +2,7 @@
 
 https://private-user-images.githubusercontent.com/5069283/413506990-12d6dce4-c682-4383-b398-babea2d320bb.mp4
 
-SmartCV-RoA2 is a tool designed to provide data on Rivals of Aether II without the need for installing mods on your Nintendo Switch, or the need for a powerful PC to read game data in real time. 
+SmartCV-RoA2 is a tool designed to provide data on Rivals of Aether II without the need for installing mods on your game, or the need for a powerful PC to read game data in real time. 
 
 It's a project that uses pixel detection to recognize certain situations in the game to take the opportunity to read data from using OCR. Due to this, it's able to gather enough data to report the results on a match (some assumptions given). Look for the **How does it work?** section to get a more in-depth explanation.
 
@@ -21,8 +21,10 @@ It's a project that uses pixel detection to recognize certain situations in the 
 - - Choosing these options will generate a command that you should copy and paste on your terminal/command prompt. PyTorch weighs around 3GB, so take your time.
 - SmartCV will read from a separate feed from OBS that will be provided to it. This is where Advanced Scene Switcher comes in. Once you have it installed, open it on the Tools tab:
 
+
 ![Advanced Scene Switcher Setup](img/guide1.jpg)
 - On the window that opens, go to the Macros tab and click on the plus sign to add a new macro (you can name it anything you want). Click on the other plus signs to add a condition and an action to this macro. I've attached a screenshot so you can mimic the settings:
+
 
 ![Advanced Scene Switcher Setup](img/guide2.jpg)
 - - "SSBU" should be the Video Capture Device source that is using your capture card.
