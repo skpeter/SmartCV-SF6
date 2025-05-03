@@ -12,6 +12,7 @@ import json
 import websockets
 import asyncio
 import roa2
+import re
 from tag_matching import findBestMatch
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -36,6 +37,7 @@ payload = {
 }
 previous_states = [None] # list of previous states to be used for state change detection
 reader = easyocr.Reader(['en'])
+refresh_rate = config.getfloat('settings', 'refresh_rate')
 
 def detect_stage_select_screen():
     global config, payload, previous_states
@@ -48,55 +50,18 @@ def detect_stage_select_screen():
         try:
             # Verify the image
             img = Image.open(feed_path)  # Reopen the image after verification
-            pixel1 = img.getpixel((596, 698))
-            pixel2 = img.getpixel((1842, 54))
+            pixel = img.getpixel((330, 605))   # white stage width icon
             break
         except (OSError, Image.UnidentifiedImageError) as e:
             if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                time.sleep(0.25)
+                # print("Image is truncated or cannot be identified. Retrying...")
+                time.sleep(0.1)
                 continue
             else:
                 raise e
     
     # Define the target colors and deviation
-    target_color1 = (85, 98, 107)  # #55626b in RGB
-    target_color2 = (200, 0, 0)   # #a50215 in RGB
-    deviation = 0.1
-    
-    # Check if the pixel color is within the deviation range
-    def is_within_deviation(color1, color2, deviation):
-        return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
-    
-    if is_within_deviation(pixel1, target_color1, deviation) and is_within_deviation(pixel2, target_color2, deviation):
-        print("Stage select screen detected")
-        payload['state'] = "stage_select"
-        if payload['state'] != previous_states[-1]:
-            previous_states.append(payload['state'])
-            # reset payload to original values
-            payload['stage'] = None
-
-def detect_selected_stage():
-    global config, payload, previous_states
-    # Read the config file
-    
-    # Get the feed path from the config file
-    feed_path = config.get('settings', 'feed_path')
-    
-    while True:
-        try:
-            # Open the image
-            img = Image.open(feed_path)
-            pixel = img.getpixel((1842, 54))
-            break
-        except (OSError, Image.UnidentifiedImageError) as e:
-            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                time.sleep(0.25)
-                continue
-            else:
-                raise e
-    
-    # Define the target color and deviation
-    target_color = (75, 5, 7)  # #4b0507 in RGB
+    target_color = (252, 250, 255)  # white stage width icon
     deviation = 0.1
     
     # Check if the pixel color is within the deviation range
@@ -104,11 +69,14 @@ def detect_selected_stage():
         return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
     
     if is_within_deviation(pixel, target_color, deviation):
-        print("Stage selected")
-        stage = read_text(img, (110, 700, 500, 100))
-        payload['stage'] = findBestMatch(stage, roa2.stages)
-        print("Selected stage:", payload['stage'])
-        time.sleep(1)
+        print("Stage select screen detected")
+        payload['state'] = "stage_select"
+        if payload['state'] != previous_states[-1]:
+            previous_states.append(payload['state'])
+            # reset payload to original values
+            payload['stage'] = None
+            if payload['players'][0]['character'] == None: detect_characters_and_tags()
+
 
 def detect_character_select_screen():
     global config, payload, previous_states
@@ -121,24 +89,27 @@ def detect_character_select_screen():
         try:
             # Open the image
             img = Image.open(feed_path)
-            pixel = img.getpixel((433, 36))
+            pixel = img.getpixel((835, 23))
+            pixel2 = img.getpixel((320, 10))
             break
         except (OSError, Image.UnidentifiedImageError) as e:
             if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                time.sleep(0.25)
+                # print("Image is truncated or cannot be identified. Retrying...")
+                time.sleep(0.1)
                 continue
             else:
                 raise e
     
     # Define the target color and deviation
-    target_color = (230, 208, 24)  # #e6d018 in RGB
+    target_color = (252, 250, 255)  #(white stopwatch)
+    target_color2 = (60, 47, 101)  #(white stopwatch)
     deviation = 0.1
     
     # Check if the pixel color is within the deviation range
     def is_within_deviation(color1, color2, deviation):
         return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
     
-    if is_within_deviation(pixel, target_color, deviation):
+    if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation):
         payload['state'] = "character_select"
         print("Character select screen detected")
         if payload['state'] != previous_states[-1]:
@@ -152,7 +123,7 @@ def detect_character_select_screen():
 
     return
 
-def read_text(img, region, unskew=False):
+def read_text(img, region):
     global payload, reader
     print("Attempting to read text...")
     # Define the area to read
@@ -177,6 +148,65 @@ def read_text(img, region, unskew=False):
 
     return result
 
+def detect_characters_and_tags():
+    global config, payload, refresh_rate
+    # Read the config file
+    
+    # Get the feed path from the config file
+    feed_path = config.get('settings', 'feed_path')
+    
+    while True:
+        try:
+            # Open the image
+            img = Image.open(feed_path)
+            break
+        except (OSError, Image.UnidentifiedImageError) as e:
+            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
+                # print("Image is truncated or cannot be identified. Retrying...")
+                time.sleep(0.1)
+                continue
+            else:
+                raise e
+    
+    #set initial game data, both players have 3 stocks
+    for player in payload['players']:
+        player['stocks'] = 3
+    def read_characters_and_names():
+        # signal to the main loop that character and tag detection is in progress
+        if payload['state'] != "stage_select": return
+        payload['players'][0]['character'] = False
+        payload['players'][1]['character'] = False
+        # Initialize the reader
+        tags = read_text(img, (0, 990, 1920, 25))
+        characters = read_text(img, (0, 1020, 1920, 20))
+        #this will yield a number of 2 characters separated by spaces. they must be assigned for each player. 
+        #it will also yield a number of 2 tags separated by spaces. an exception to this is if the player does not have a tag, in which case they will show up as Player 1, Player 2, Player 3 or Player 4.
+        #the regex will handle these exceptions.
+        if tags is not None:
+            tags = re.split(r' (?=\D)', tags)
+            if len(tags) == 2:
+                t1, t2 = tags[0], tags[1]
+            else:
+                return detect_characters_and_tags() # re-attempt detection
+        else:
+            return detect_characters_and_tags() # re-attempt detection
+        if characters is not None:
+            characters = characters.split(" ")
+            if len(characters) == 2:
+                c1, c2 = findBestMatch(characters[0], roa2.characters), findBestMatch(characters[1], roa2.characters)
+            else:
+                return detect_characters_and_tags() # re-attempt detection
+        else:
+            return detect_characters_and_tags()
+        payload['players'][0]['character'], payload['players'][1]['character'], payload['players'][0]['name'], payload['players'][1]['name'] = c1, c2, t1, t2
+        print("Player 1 character:", c1)
+        print("Player 2 character:", c2)
+        print("Player 1 tag:", t1)
+        print("Player 2 tag:", t2)
+
+    threading.Thread(target=read_characters_and_names).start()
+    return img
+
 def detect_versus_screen():
     global config, payload, previous_states
     # Read the config file
@@ -188,113 +218,43 @@ def detect_versus_screen():
         try:
             # Open the image
             img = Image.open(feed_path)
-            pixel = img.getpixel((30, 69))
-            pixel2 = img.getpixel((1040, 55))
+            pixel1 = img.getpixel((1075, 69)) #(white rupture between characters on VS screen)
+            pixel2 = img.getpixel((855, 985)) #(white rupture between characters on VS screen)
+            pixel3 = img.getpixel((942, 85)) #backup pixel to detect game has started: semicolon from ingame timer
             break
         except (OSError, Image.UnidentifiedImageError) as e:
             if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                time.sleep(0.25)
+                # print("Image is truncated or cannot be identified. Retrying...")
+                time.sleep(0.1)
                 continue
             else:
                 raise e
     
     # Define the target color and deviation
-
-    target_color = (251, 53, 51)  # #FB3533 in RGB
-    target_color2 = (33, 140, 254)  # #218CFE in RGB
-
-    deviation = 0.2
+    target_color = (252, 250, 255)  #(white rupture between characters on VS screen)
+    deviation = 0.1
     
     # Check if the pixel color is within the deviation range
     def is_within_deviation(color1, color2, deviation):
         return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
     
-    if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation):
-        print("Versus screen detected")
+    if (is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation)) or is_within_deviation(pixel3, target_color, deviation):
         payload['state'] = "in_game"
         if payload['state'] != previous_states[-1]:
-            #set initial game data, both players have 3 stocks
-            for player in payload['players']:
-                player['stocks'] = 3
             previous_states.append(payload['state'])
-            def read_characters_and_names():
-                # Initialize the reader
-                c1 = read_text(img, (110, 10, 870, 120), True)
-                c1 = findBestMatch(c1, roa2.characters)
-                print("Player 1 character:", c1)
-                c2 = read_text(img, (1070, 10, 870, 120), True)
-                c2 = findBestMatch(c2, roa2.characters)
-                print("Player 2 character:", c2)
-                t1 = read_text(img, (5, 155, 240, 50), True)
-                print("Player 1 tag:", t1)
-                t2 = read_text(img, (965, 155, 240, 50), True)
-                print("Player 2 tag:", t2)
-                payload['players'][0]['character'], payload['players'][1]['character'], payload['players'][0]['name'], payload['players'][1]['name'] = c1, c2, t1, t2
-            threading.Thread(target=read_characters_and_names).start()
-            time.sleep(2)
-    return img
-
-
-
-def detect_taken_stock():
-    global config, payload, previous_states
-    # Read the config file
-    
-    # Get the feed path from the config file
-    feed_path = config.get('settings', 'feed_path')
-    
-    while True:
-        try:
-            # Open the image
-            img = Image.open(feed_path)
-            break
-        except (OSError, Image.UnidentifiedImageError) as e:
-            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                time.sleep(0.25)
-                continue
+        # read stage name
+        if is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
+            stage = read_text(img, (1120, 25, 750, 75))
+            if stage is not None:
+                payload['stage'] = findBestMatch(stage, roa2.stages)
+                print("Match has started on stage: ", payload['stage'])
             else:
-                raise e
-    
-    # Define the region to check
-    x, y, w, h = 905, 445, 105, 40
-    region = img.crop((x, y, x + w, y + h))
-    
-    # Define the target color and deviation
-    target_color = (255, 255, 255)  # #ffffff in RGB
-    deviation = 0.1
-    
-    # Check if the region is filled with the target color within the deviation range
-    def is_within_deviation(color1, color2, deviation):
-        return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
-    
-    pixels = region.getdata()
-    if all(is_within_deviation(pixel, target_color, deviation) for pixel in pixels):
-        s1 = count_stock_numbers(img, (385, 340, 330, 265))
-        s2 = count_stock_numbers(img, (1225, 330, 330, 265))
-        if s1 == payload['players'][0]['stocks'] - 1 or s2 == payload['players'][1]['stocks'] - 1: #this ensures data will only be stored if there was only one stock taken. not gained, or lost, or multiple stocks taken
-            payload['players'][0]['stocks'] = s1
-            payload['players'][1]['stocks'] = s2
-            print("Stock taken. Stocks left:", payload['players'][0]['stocks']," - ", payload['players'][1]['stocks'])
+                print("Match has started!")
+            time.sleep(10) # wait for the game to start
+        else:
+            print("Match has started!")
 
-def count_stock_numbers(img, region):
-    # Define the area to read
-    global reader
-    x, y, w, h = region
-    stock_img = img.crop((x, y, x + w, y + h))
-
-    #convert stock_image from PIL.Image to cv2
-    stock_img = cv2.cvtColor(np.array(stock_img), cv2.COLOR_RGB2GRAY)
-        
-    # Use OCR to read the text from the image
-    result = reader.readtext(stock_img, paragraph=False, allowlist='123', contrast_ths=0.7)
-    
-    # Extract the text
-    if result:
-        stock_number = result[0][1]
-        if stock_number.isdigit():
-            return int(stock_number) if int(stock_number) < 4 else 3 if int(stock_number) == 33 else 2 if int(stock_number) == 22 else 1
-        return 1 #workaround because OCR fails to read the stock number accurately if it's 1
-    return 1 #workaround because OCR fails to read the stock number accurately if it's 1
+    return
 
 def detect_game_end():
     global config, payload, previous_states
@@ -303,101 +263,106 @@ def detect_game_end():
     # Get the feed path from the config file
     feed_path = config.get('settings', 'feed_path')
     
+
     while True:
         try:
-            # Load the main image
-            main_img = cv2.imread(feed_path, cv2.IMREAD_GRAYSCALE)
-            if main_img is None:
-                time.sleep(0.25)
-                continue #image may be corrupted, try again
+            # Open the image
+            img = Image.open(feed_path)
+            pixel1 = img.getpixel((0, 90)) #(black letterbox that shows up when game ends)
+            pixel2 = img.getpixel((0, 980)) #(black letterbox that shows up when game ends)
             break
-        except OSError as e:
-            if "image file is truncated" in str(e):
-                time.sleep(0.25)
+        except (OSError, Image.UnidentifiedImageError) as e:
+            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
+                # print("Image is truncated or cannot be identified. Retrying...")
+                time.sleep(0.1)
                 continue
             else:
                 raise e
-
+            
+    target_color = (0, 0, 0)  #(black letterbox that shows up when game ends)
+    deviation = 0.1
     
-    # Crop the specific area
-    x, y, w, h = 312, 225, 1300, 445
-    cropped_img = main_img[y:y+h, x:x+w]
+    # Check if the pixel color is within the deviation range
+    def is_within_deviation(color1, color2, deviation):
+        return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
     
-    # Load the template images
-    game_template = cv2.imread('img/GAME.png', cv2.IMREAD_GRAYSCALE)
-    time_template = cv2.imread('img/TIME.png', cv2.IMREAD_GRAYSCALE)
-    
-    if game_template is None or time_template is None:
-        raise FileNotFoundError("Template images not found")
-    
-    # Perform template matching
-    res_game = cv2.matchTemplate(cropped_img, game_template, cv2.TM_CCOEFF_NORMED)
-    res_time = cv2.matchTemplate(cropped_img, time_template, cv2.TM_CCOEFF_NORMED)
-    
-    # Check if the maximum correlation coefficient exceeds the threshold
-    threshold = 0.5
-    if np.max(res_game) >= threshold or np.max(res_time) >= threshold:
+    if (is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation)):
         print("Game end detected")
-        process_game_end_data(main_img)
-        payload['state'] = "game_end"
-        if payload['state'] != previous_states[-1]:
-            previous_states.append(payload['state'])
+        if (process_game_end_data(img)):
+            payload['state'] = "game_end"
+            if payload['state'] != previous_states[-1]:
+                previous_states.append(payload['state'])
 
     
-def process_game_end_data(main_img):
+def process_game_end_data(img):
     global payload, reader
     # Define the area to read
-    x, y, w, h = 510, 920, 145, 80
-    p1_damage_img = main_img[y:y+h, x:x+w]
-    x, y, w, h = 1250, 920, 145, 80
-    p2_damage_img = main_img[y:y+h, x:x+w]
+    x, y, w, h = 541, 754, 731, 197
+    img_array = np.array(img)
+    full_data = img_array[y:y+h, x:x+w]
+    full_data = cv2.cvtColor(full_data, cv2.COLOR_RGB2GRAY)
+    # Increase contrast of the image
+    # full_data = cv2.convertScaleAbs(full_data, alpha=4, beta=0)
+    # replace the character icons areas with black pixels
+    full_data[0:h, 193:193+45] = 0
+    full_data[0:h, 535:535+45] = 0
     
-    results = []
-    
-    # Use OCR to read the text from the image
-    result = reader.readtext(p1_damage_img)
-    results.append(' '.join([res[1] for res in result]))
-    result = reader.readtext(p2_damage_img)
-    results.append(' '.join([res[1] for res in result]))
+    # Use OCR to read the text from the grayscale image
+    result = reader.readtext(full_data, paragraph=False, allowlist='0123456789%', text_threshold=0.3, low_text=0.3)
+    # print(result)
 
-    payload['players'][0]['damage'] = results[0]
-    payload['players'][1]['damage'] = results[1]
+    # what this text will extract are for excerpts of numbers. the first is the number of stocks for player 1, the second is the damage received by player 1, the third is the number of stocks for player 2, and the fourth is the damage received by player 2.
+    if result:
+        # remove results that have less than 0.25 confidence (might not be numbers)
+        result = [res for res in result if res[2] >= 0.25]
 
-    # if player has one stock left and the damage recognizes as an empty string, they've lost all of their stocks.
-    for player in payload['players']:
-        if player['stocks'] < 3 and player['damage'] == '':
-            player['stocks'] = 0
-            print(str(player['name']) + " has lost all of their stocks")
-            for player in payload['players']:
-                if player['damage'] != '':
-                    print(str(player['name']) + " Wins!")
-            
-    
-    # Extract and print the text
-    print("Damage read: Player 1: '", payload['players'][0]['damage'], "' - Player 2: '", payload['players'][1]['damage'], "'")
+        # remove % sign
+        result = ([int(res[1].replace('%', '') or 0) for res in result])
+
+        # do some cleanup
+        for i in range(len(result)):
+            if result[i] > 999: result.remove(result[i])
+        if len(result) == 4:
+            stocks1, damage1, stocks2, damage2 = result[0] or 0, result[1] or 0, result[2] or 0, result[3] or 0
+            payload['players'][0]['stocks'] = stocks1
+            payload['players'][1]['stocks'] = stocks2
+            payload['players'][0]['damage'] = damage1
+            payload['players'][1]['damage'] = damage2
+
+            #print out the winner of the match based on two conditions: if one player has 0 stcks the other player wins. if both players have the same amount of stocks, the player with the least amount of damage wins.
+            if payload['players'][0]['stocks'] == 0 or payload['players'][0]['stocks'] < payload['players'][1]['stocks']:
+                print(f"{payload['players'][1]['name']} wins!")
+            elif payload['players'][1]['stocks'] == 0 or payload['players'][1]['stocks'] < payload['players'][0]['stocks']:
+                print(f"{payload['players'][0]['name']} wins!")
+            elif payload['players'][0]['stocks'] == payload['players'][1]['stocks']:
+                if payload['players'][0]['damage'] < payload['players'][1]['damage']:
+                    print(f"{payload['players'][0]['name']} wins!")
+                elif payload['players'][0]['damage'] > payload['players'][1]['damage']:
+                    print(f"{payload['players'][1]['name']} wins!")
+            else: print("Draw game")
+            return True
+        else:
+            print("Could not read game end data. Hopefully trying again...")
+    return False
 
 
 def run_detection():
-    global payload, previous_states
+    global payload, previous_states, refresh_rate
     while True:
         if payload['state'] == None:
-            detect_stage_select_screen()
-        elif payload['state'] == "stage_select":
-            detect_selected_stage()
             detect_character_select_screen()
         elif payload['state'] == "character_select":
             detect_stage_select_screen()
-            if payload['players'][0]['character'] == None: detect_versus_screen()
+        elif payload['state'] == "stage_select":
+            detect_character_select_screen()
+            detect_versus_screen()
             gc.collect()
         elif payload['state'] == "in_game":
-            detect_stage_select_screen()
-            detect_taken_stock()
+            detect_character_select_screen()
             detect_game_end()
         elif payload['state'] == "game_end":
-            detect_stage_select_screen()
-            detect_selected_stage()
             detect_character_select_screen()
-        refresh_rate = config.getfloat('settings', 'refresh_rate')
+            detect_stage_select_screen()
         time.sleep(refresh_rate)
 
 async def send_data(websocket):
@@ -434,7 +399,7 @@ def start_websocket_server():
 
     asyncio.run(start_server())
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     # Start the detection thread
     detection_thread = threading.Thread(target=run_detection)
     detection_thread.daemon = True
@@ -445,7 +410,7 @@ if __name__ == "__main__":
     websocket_thread.daemon = True
     websocket_thread.start()
 
-    print("All systems go. Please head to the stage selection screen to start detection.")
+    print("All systems go. Please head to the character selection screen to start detection.")
 
     # Keep the main thread alive
     while True:
