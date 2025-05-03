@@ -1,8 +1,8 @@
-# SmartCV-SSBU
+# SmartCV-RoA2
 
 https://private-user-images.githubusercontent.com/5069283/413506990-12d6dce4-c682-4383-b398-babea2d320bb.mp4
 
-SmartCV-SSBU is a tool designed to provide data on Super Smash Bros. Ultimate matches without the need for installing mods on your Nintendo Switch, or the need for a powerful PC to read game data in real time. 
+SmartCV-RoA2 is a tool designed to provide data on Rivals of Aether II without the need for installing mods on your Nintendo Switch, or the need for a powerful PC to read game data in real time. 
 
 It's a project that uses pixel detection to recognize certain situations in the game to take the opportunity to read data from using OCR. Due to this, it's able to gather enough data to report the results on a match (some assumptions given). Look for the **How does it work?** section to get a more in-depth explanation.
 
@@ -10,9 +10,7 @@ It's a project that uses pixel detection to recognize certain situations in the 
 - [Python (minimum version 3.11 and with Python added to your PATH)](https://www.python.org/downloads/)
 - [OBS (does not necessarily need to be streaming)](https://obsproject.com/download)
 - [Advanced Scene Switcher OBS Plugin](https://github.com/WarmUpTill/SceneSwitcher/releases)
-- A capture card that is able to output the game in 1080p
-- Your copy of Super Smash Bros. Ultimate must be in **English** (other languages coming soon)
-
+- Your game resolution must be in 1920x1080
 
 ## Installation & Setup
 - Download the compiled release [here](https://github.com/skpeter/smartcv/releases).
@@ -45,8 +43,9 @@ As of this writing, only [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide
 
 ## Known Issues
 
-- The app currently is unable to tell from the three different Mii fighter characters (because on the versus screen, they all show up as Mii). A solution is being worked on
-- The app doesn't know how to differentiate handwarmers from actual matches. [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide) (the companion app) has a workaround for this at the moment.
+- The app sometimes isn't able to read the stage that the match is being played.
+
+- The app doesn't know how to differentiate handwarmers from actual matches. Please instruct your players to use the Restart or Quit options in the menu when being done with handwarmers. [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide) (the companion app) may be able to handle some cases where that doesn't happen.
 
 ## How does it work?
 
