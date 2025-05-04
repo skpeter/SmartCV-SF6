@@ -22,7 +22,8 @@ It's a project that uses pixel detection to recognize certain situations in the 
 - - Choosing these options will generate a command that you should copy and paste on your terminal/command prompt. PyTorch weighs around 3GB, so take your time.
 
 ## Step 2: OBS Setup
-**If you are playing Rivals 2 from a PC and not receiving game feed from a capture card / console, you can skip this step!**
+### If you are playing Rivals 2 from a PC and not receiving game feed from a capture card / console, you can skip this step!
+
 SmartCV will read from a separate feed from OBS that will be provided to it. This is where Advanced Scene Switcher comes in. Once you have it installed, open it on the Tools tab:
 ![Advanced Scene Switcher Setup](img/guide1.jpg)
 - On the window that opens, go to the Macros tab and click on the plus sign to add a new macro (you can name it anything you want). Click on the other plus signs to add a condition and an action to this macro. I've attached a screenshot so you can mimic the settings:
@@ -30,7 +31,7 @@ SmartCV will read from a separate feed from OBS that will be provided to it. Thi
 ![Advanced Scene Switcher Setup](img/guide2.jpg)
 - - "SSBU" should be the Video Capture Device source that is using your capture card.
 - - You can set the path to save the screenshot anywhere you'd like (SmartCV must have access to it), but it is **highly recommended** that you save the screenshot as a **WEBP**. This image format causes the least amount of issues and is very lightweight, however if for some reason you can't use WEBPs, you can save it as a JPG instead. 
-- Go to SmartCV's `config.ini` file and set the `feed_path` setting to the path where OBS is saving the screenshots.
+- Go to SmartCV's `config.ini` file, set the `capture_mode` setting to `obs` and set the `feed_path` setting to the path where OBS is saving the screenshots.
 
 ## Usage
 **All you need to do is open smartcv.exe and follow the on-screen instructions for the game detection to start**
