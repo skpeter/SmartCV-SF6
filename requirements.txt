@@ -1,3 +1,5 @@
+mss
+pygetwindow
 Pillow
 opencv-python
 numpy
