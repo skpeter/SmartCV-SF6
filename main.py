@@ -154,7 +154,7 @@ def detect_character_select_screen():
 
 def read_text(img, region):
     global payload, reader
-    print("Attempting to read text...")
+    # print("Attempting to read text...")
     # Define the area to read
     x, y, w, h = region
     cropped_img = img.crop((x, y, x + w, y + h))
@@ -329,7 +329,7 @@ def process_game_end_data(img, region: tuple[int, int, int, int], crop_area: tup
             else: print("Draw game")
             return True
         else:
-            print("Could not read game end data. Hopefully trying again...")
+            print("Could not read game end data. Trying again...")
     return False
 
 
