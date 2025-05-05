@@ -16,6 +16,7 @@ import re
 from tag_matching import findBestMatch
 import mss
 import pygetwindow as gw
+import traceback
 config = configparser.ConfigParser()
 config.read('config.ini')
 
@@ -44,47 +45,70 @@ capture_mode = config.get('settings', 'capture_mode')
 executable_name = config.get('settings', 'executable_name')
 # Get the feed path from the config file
 feed_path = config.get('settings', 'feed_path')
+base_height = 1080
+base_width = 1920
 
 # Check if the pixel color is within the deviation range
 def is_within_deviation(color1, color2, deviation):
     return all(abs(c1 - c2) / 255.0 <= deviation for c1, c2 in zip(color1, color2))
 
 def capture_screen():
+    global base_height, base_width, feed_path, capture_mode, executable_name
     if capture_mode == 'obs':
-        img = Image.open(feed_path)
+        while True:
+            try:
+                img = Image.open(feed_path)
+                break
+            except (OSError, Image.UnidentifiedImageError) as e:
+                if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
+                    # print("Image is truncated or cannot be identified. Retrying...")
+                    time.sleep(0.1)
+                    continue
+                else:
+                    raise e
     else:
         # Find the window by its title
         windows = gw.getWindowsWithTitle(executable_name)
         if windows:
             window = windows[0]
         else:
-            raise ValueError(f"Executable {executable_name} not found. Ensure it is running and visible.")
+            print(f"Executable {executable_name} not found. Ensure it is running and visible.")
+            return False, None, None
 
         # Get the window's bounding box
-        bbox = (window.left, window.top, window.right, window.bottom)
+        # Get the window's dimensions
+        width = window.right - window.left
+        height = window.bottom - window.top
+        
+        # Calculate target height for 16:9 aspect ratio
+        target_height = int(width * (9/16))
+        
+        # If current height is larger than target, adjust top to crop from bottom
+        if height > target_height:
+            adjusted_top = window.bottom - target_height
+        else:
+            adjusted_top = window.top
+            
+        bbox = (window.left, adjusted_top, window.right, window.bottom)
 
         with mss.mss() as sct:
             # Capture the screen using the bounding box
             screenshot = sct.grab(bbox)
             img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
-    return img
+    
+    # also return the scale of the image based off base resolution (1080p)
+    image_width, image_height = img.size
+    scale_x = image_width / base_width
+    scale_y = image_height / base_height
+    return img, scale_x, scale_y
 
 def detect_stage_select_screen():
     global config, payload, previous_states, feed_path, capture_mode, executable_name
     # Read the config file
 
-    while True:
-        try:
-            img = capture_screen()
-            pixel = img.getpixel((330, 605))  # white stage width icon
-            break
-        except (OSError, Image.UnidentifiedImageError) as e:
-            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                # print("Image is truncated or cannot be identified. Retrying...")
-                time.sleep(0.1)
-                continue
-            else:
-                raise e
+    img, scale_x, scale_y = capture_screen()
+    if not img: return
+    pixel = img.getpixel((int(330 * scale_x), int(605 * scale_y)))  # white stage width icon
     
     # Define the target colors and deviation
     target_color = (252, 250, 255)  # white stage width icon
@@ -104,19 +128,10 @@ def detect_stage_select_screen():
 def detect_character_select_screen():
     global config, payload, previous_states, feed_path, capture_mode, executable_name
     
-    while True:
-        try:
-            img = capture_screen()
-            pixel = img.getpixel((835, 23)) #white tournament mode icon
-            pixel2 = img.getpixel((320, 10)) #back button area
-            break
-        except (OSError, Image.UnidentifiedImageError) as e:
-            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                # print("Image is truncated or cannot be identified. Retrying...")
-                time.sleep(0.1)
-                continue
-            else:
-                raise e
+    img, scale_x, scale_y = capture_screen()
+    if not img: return
+    pixel = img.getpixel((int(835 * scale_x), int(23 * scale_y))) #white tournament mode icon
+    pixel2 = img.getpixel((int(320 * scale_x), int(10 * scale_y))) #back button area
     
     # Define the target color and deviation
     target_color = (252, 250, 255)  #(white tournament mode icon)
@@ -167,17 +182,8 @@ def detect_characters_and_tags():
     global config, payload, refresh_rate, feed_path, capture_mode, executable_name
     # Read the config file
     
-    while True:
-        try:
-            img = capture_screen()
-            break
-        except (OSError, Image.UnidentifiedImageError) as e:
-            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                # print("Image is truncated or cannot be identified. Retrying...")
-                time.sleep(0.1)
-                continue
-            else:
-                raise e
+    img, scale_x, scale_y = capture_screen()
+    if not img: return
     
     #set initial game data, both players have 3 stocks
     for player in payload['players']:
@@ -188,8 +194,8 @@ def detect_characters_and_tags():
         payload['players'][0]['character'] = False
         payload['players'][1]['character'] = False
         # Initialize the reader
-        tags = read_text(img, (0, 990, 1920, 25))
-        characters = read_text(img, (0, 1020, 1920, 20))
+        tags = read_text(img, (0, int(990 * scale_y), int(1920 * scale_x), int(25 * scale_y)))
+        characters = read_text(img, (0, int(1020 * scale_y), int(1920 * scale_x), int(20 * scale_y)))
         #this will yield a number of 2 characters separated by spaces. they must be assigned for each player. 
         #it will also yield a number of 2 tags separated by spaces. an exception to this is if the player does not have a tag, in which case they will show up as Player 1, Player 2, Player 3 or Player 4.
         #the regex will handle these exceptions.
@@ -222,20 +228,11 @@ def detect_versus_screen():
     global config, payload, previous_states, feed_path, capture_mode, executable_name
     # Read the config file
     
-    while True:
-        try:
-            img = capture_screen()
-            pixel1 = img.getpixel((1075, 69)) #(white rupture between characters on VS screen)
-            pixel2 = img.getpixel((855, 985)) #(white rupture between characters on VS screen)
-            pixel3 = img.getpixel((942, 85)) #backup pixel to detect game has started: semicolon from ingame timer
-            break
-        except (OSError, Image.UnidentifiedImageError) as e:
-            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                # print("Image is truncated or cannot be identified. Retrying...")
-                time.sleep(0.1)
-                continue
-            else:
-                raise e
+    img, scale_x, scale_y = capture_screen()
+    if not img: return
+    pixel1 = img.getpixel((int(1075 * scale_x), int(69 * scale_y))) #(white rupture between characters on VS screen)
+    pixel2 = img.getpixel((int(855 * scale_x), int(985 * scale_y))) #(white rupture between characters on VS screen)
+    pixel3 = img.getpixel((int(942 * scale_x), int(85 * scale_y))) #backup pixel to detect game has started: semicolon from ingame timer
     
     # Define the target color and deviation
     target_color = (252, 250, 255)  #(white rupture between characters on VS screen)
@@ -247,7 +244,7 @@ def detect_versus_screen():
             previous_states.append(payload['state'])
         # read stage name
         if is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
-            stage = read_text(img, (1120, 25, 750, 75))
+            stage = read_text(img, (int(1120 * scale_x), int(25 * scale_y), int(750 * scale_x), int(75 * scale_y)))
             if stage is not None:
                 payload['stage'] = findBestMatch(stage, roa2.stages)
                 print("Match has started on stage: ", payload['stage'])
@@ -263,47 +260,40 @@ def detect_game_end():
     global config, payload, previous_states, feed_path, capture_mode, executable_name
     # Read the config file
 
-    while True:
-        try:
-            img = capture_screen()
-            pixel1 = img.getpixel((0, 90)) #(black letterbox that shows up when game ends)
-            pixel2 = img.getpixel((0, 980)) #(black letterbox that shows up when game ends)
-            break
-        except (OSError, Image.UnidentifiedImageError) as e:
-            if "truncated" in str(e) or "cannot identify image file" in str(e) or "could not create decoder object" in str(e):
-                # print("Image is truncated or cannot be identified. Retrying...")
-                time.sleep(0.1)
-                continue
-            else:
-                raise e
+    img, scale_x, scale_y = capture_screen()
+    if not img: return
+    pixel1 = img.getpixel((0, int(90 * scale_y))) #(black letterbox that shows up when game ends)
+    pixel2 = img.getpixel((0, int(980 * scale_y))) #(black letterbox that shows up when game ends)
             
     target_color = (0, 0, 0)  #(black letterbox that shows up when game ends)
     deviation = 0.1
         
     if (is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation)):
         print("Game end detected")
-        if (process_game_end_data(img)):
+        if (process_game_end_data(img, (int(541 * scale_x), int(754 * scale_y), int(731 * scale_x), int(197 * scale_y)), (int(193 * scale_x), int(238 * scale_x), int(535 * scale_x), int(580 * scale_x)))):
             payload['state'] = "game_end"
             if payload['state'] != previous_states[-1]:
                 previous_states.append(payload['state'])
 
     
-def process_game_end_data(img):
+def process_game_end_data(img, region: tuple[int, int, int, int], crop_area: tuple[int, int, int, int]):
     global payload, reader
     # Define the area to read
-    x, y, w, h = 541, 754, 731, 197
+    x, y, w, h = region
     img_array = np.array(img)
-    full_data = img_array[y:y+h, x:x+w]
+    full_data = img_array[int(y):int(y+h), int(x):int(x+w)]
     full_data = cv2.cvtColor(full_data, cv2.COLOR_RGB2GRAY)
     # Increase contrast of the image
     full_data = cv2.convertScaleAbs(full_data, alpha=2, beta=0)
-    # replace the character icons areas with black pixels
-    full_data[0:h, 193:193+45] = 0
-    full_data[0:h, 535:535+45] = 0
+    # remove character icons regions from the data
+    left_region = full_data[:, :crop_area[0]]  # before the first icon
+    middle_region = full_data[:, crop_area[1]:crop_area[2]]  # between the first icon and second icon
+    right_region = full_data[:, crop_area[3]:]  # after second icon
+    full_data = np.hstack((left_region, middle_region, right_region))
     
     # Use OCR to read the text from the grayscale image
     result = reader.readtext(full_data, paragraph=False, allowlist='0123456789%', text_threshold=0.3, low_text=0.2)
-    print(result)
+    # print(result)
 
     # what this text will extract are for excerpts of numbers. the first is the number of stocks for player 1, the second is the damage received by player 1, the third is the number of stocks for player 2, and the fourth is the damage received by player 2.
     if result:
@@ -346,20 +336,25 @@ def process_game_end_data(img):
 def run_detection():
     global payload, previous_states, refresh_rate
     while True:
-        if payload['state'] == None:
-            detect_character_select_screen()
-        elif payload['state'] == "character_select":
-            detect_stage_select_screen()
-        elif payload['state'] == "stage_select":
-            detect_character_select_screen()
-            detect_versus_screen()
-            gc.collect()
-        elif payload['state'] == "in_game":
-            detect_character_select_screen()
-            detect_game_end()
-        elif payload['state'] == "game_end":
-            detect_character_select_screen()
-            detect_stage_select_screen()
+        try:
+            if payload['state'] == None:
+                detect_character_select_screen()
+            elif payload['state'] == "character_select":
+                detect_stage_select_screen()
+            elif payload['state'] == "stage_select":
+                detect_character_select_screen()
+                detect_versus_screen()
+                gc.collect()
+            elif payload['state'] == "in_game":
+                detect_character_select_screen()
+                detect_game_end()
+            elif payload['state'] == "game_end":
+                detect_character_select_screen()
+                detect_stage_select_screen()
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            print("Stack trace:")
+            print(traceback.format_exc())
         time.sleep(refresh_rate)
 
 async def send_data(websocket):
