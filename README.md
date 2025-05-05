@@ -9,7 +9,6 @@ It's a project that uses pixel detection to recognize certain situations in the 
 ## Requirements
 - [OBS (optional if streaming)](https://obsproject.com/download)
 - [Advanced Scene Switcher OBS Plugin (optional if streaming)](https://github.com/WarmUpTill/SceneSwitcher/releases)
-- Your game resolution must be in 1920x1080
 
 ### Step 1.1: Installing the CPU version
 - Installing the CPU version is very easy. Just download the compiled release.zip [here](https://github.com/skpeter/smartcv/releases).
