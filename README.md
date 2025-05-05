@@ -56,6 +56,9 @@ As of this writing, only [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide
 
 Explanation coming soon
 
+## Check out also:
+- [SmartCV-SSBU for Super Smash Bros. Ultimate](https://github.com/skpeter/SmartCV-SSBU)
+
 ## Contact
 
 [I am mostly available on my team's Discord Server if you'd like to talk about SmartCV or have any additional questions.](https://discord.gg/zecMKvF8b5)
