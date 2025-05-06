@@ -270,7 +270,7 @@ def detect_game_end():
         
     if (is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation)):
         print("Game end detected")
-        if (process_game_end_data(img, (int(541 * scale_x), int(754 * scale_y), int(731 * scale_x), int(197 * scale_y)), (int(193 * scale_x), int(238 * scale_x), int(535 * scale_x), int(580 * scale_x)))):
+        if (process_game_end_data(img, (int(541 * scale_x), int(754 * scale_y), int(731 * scale_x), int(197 * scale_y)), (int(187 * scale_x), int(238 * scale_x), int(535 * scale_x), int(580 * scale_x)))):
             payload['state'] = "game_end"
             if payload['state'] != previous_states[-1]:
                 previous_states.append(payload['state'])
@@ -285,11 +285,9 @@ def process_game_end_data(img, region: tuple[int, int, int, int], crop_area: tup
     full_data = cv2.cvtColor(full_data, cv2.COLOR_RGB2GRAY)
     # Increase contrast of the image
     full_data = cv2.convertScaleAbs(full_data, alpha=2, beta=0)
-    # remove character icons regions from the data
-    left_region = full_data[:, :crop_area[0]]  # before the first icon
-    middle_region = full_data[:, crop_area[1]:crop_area[2]]  # between the first icon and second icon
-    right_region = full_data[:, crop_area[3]:]  # after second icon
-    full_data = np.hstack((left_region, middle_region, right_region))
+    # black out character icons regions
+    full_data[:, crop_area[0]:crop_area[1]] = 0  # first icon
+    full_data[:, crop_area[2]:crop_area[3]] = 0  # second icon
     
     # Use OCR to read the text from the grayscale image
     result = reader.readtext(full_data, paragraph=False, allowlist='0123456789%', text_threshold=0.3, low_text=0.2)
@@ -304,10 +302,8 @@ def process_game_end_data(img, region: tuple[int, int, int, int], crop_area: tup
         result = ([int(res[1].replace('%', '') or 0) for res in result])
 
         # do some cleanup
-        for i in range(len(result)):
-            if result[i] > 999: result.remove(result[i])
         if len(result) == 4:
-            stocks1, damage1, stocks2, damage2 = result[0] or 0, result[1] or 0, result[2] or 0, result[3] or 0
+            stocks1, damage1, stocks2, damage2 = result[0], result[1], result[2], result[3]
             payload['players'][0]['stocks'] = stocks1
             payload['players'][1]['stocks'] = stocks2
             payload['players'][0]['damage'] = damage1
@@ -317,14 +313,18 @@ def process_game_end_data(img, region: tuple[int, int, int, int], crop_area: tup
             print(f"{payload['players'][1]['name']}'s end state: {stocks2} stocks at {damage2}%")
             
             #print out the winner of the match based on two conditions: if one player has 0 stcks the other player wins. if both players have the same amount of stocks, the player with the least amount of damage wins.
-            if payload['players'][0]['stocks'] == 0 or payload['players'][0]['stocks'] < payload['players'][1]['stocks']:
+            if stocks1 == 0 or stocks1 < stocks2:
                 print(f"{payload['players'][1]['name']} wins!")
-            elif payload['players'][1]['stocks'] == 0 or payload['players'][1]['stocks'] < payload['players'][0]['stocks']:
+            elif stocks2 == 0 or stocks2 < stocks1:
                 print(f"{payload['players'][0]['name']} wins!")
-            elif payload['players'][0]['stocks'] == payload['players'][1]['stocks']:
-                if payload['players'][0]['damage'] < payload['players'][1]['damage']:
+            elif stocks1 == stocks2:
+                # in this case, we need to be more scrumptuous with the damage values as they can be read wrong
+                if damage1 > 270 or damage2 > 270:
+                    print("Damage values considered too high")
+                    return False
+                if damage1 < damage2:
                     print(f"{payload['players'][0]['name']} wins!")
-                elif payload['players'][0]['damage'] > payload['players'][1]['damage']:
+                elif damage1 > damage2:
                     print(f"{payload['players'][1]['name']} wins!")
             else: print("Draw game")
             return True
