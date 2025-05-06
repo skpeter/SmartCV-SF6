@@ -312,6 +312,8 @@ def process_game_end_data(img, region: tuple[int, int, int, int], crop_area: tup
             print(f"{payload['players'][0]['name']}'s end state: {stocks1} stocks at {damage1}%")
             print(f"{payload['players'][1]['name']}'s end state: {stocks2} stocks at {damage2}%")
             
+            #validate stock counts
+            if not (0 <= stocks1 <= 3) or not (0 <= stocks2 <= 3): return False
             #print out the winner of the match based on two conditions: if one player has 0 stcks the other player wins. if both players have the same amount of stocks, the player with the least amount of damage wins.
             if stocks1 == 0 or stocks1 < stocks2:
                 print(f"{payload['players'][1]['name']} wins!")
