@@ -33,7 +33,7 @@ SmartCV will read from a separate feed from OBS that will be provided to it. Thi
 - Go to SmartCV's `config.ini` file, set the `capture_mode` setting to `obs` and set the `feed_path` setting to the path where OBS is saving the screenshots.
 
 ## Step 3: Usage
-- To open the GPU version of the app, open the `main.py` file with Python. Otherwise to run the CPU version just run `smartcv.exe`.
+- To run the GPU version of the app, open the `smartcv.bat` file. To run the CPU version just open `smartcv.exe`.
 **From here all you need to do is follow the on-screen instructions for the game detection to start.**
 **If using OBS, make sure it is open and do not disable the game capture source!**
 
