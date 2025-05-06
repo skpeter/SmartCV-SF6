@@ -24,7 +24,7 @@ stages = [
   "Fire Capital",
   "Hyperborean Harbor",
   "Rock Wall",
-  "Crystal Oasis" # Rock wall skin
+  "Crystal Oasis", # Rock wall skin
   "Tempest Peak",
   #Doubles
   "Forest Understory",
