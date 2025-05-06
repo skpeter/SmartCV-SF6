@@ -9,6 +9,7 @@ It's a project that uses pixel detection to recognize certain situations in the 
 ## Requirements
 - [OBS (optional if streaming)](https://obsproject.com/download)
 - [Advanced Scene Switcher OBS Plugin (optional if streaming)](https://github.com/WarmUpTill/SceneSwitcher/releases)
+- Your copy of Rivals of Aether II must be in **English**. Support for other languages is being looked into.
 
 ### Step 1.1: Installing the CPU version
 - Installing the CPU version is very easy. Just download the compiled release.zip [here](https://github.com/skpeter/smartcv/releases).
