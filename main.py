@@ -108,7 +108,7 @@ def detect_stage_select_screen():
 
     img, scale_x, scale_y = capture_screen()
     if not img: return
-    pixel = img.getpixel((int(330 * scale_x), int(605 * scale_y)))  # white stage width icon
+    pixel = img.getpixel((int(75 * scale_x), int(540 * scale_y)))  # white stage width icon
     
     # Define the target colors and deviation
     target_color = (252, 250, 255)  # white stage width icon
@@ -130,7 +130,7 @@ def detect_character_select_screen():
     
     img, scale_x, scale_y = capture_screen()
     if not img: return
-    pixel = img.getpixel((int(835 * scale_x), int(23 * scale_y))) #white tournament mode icon
+    pixel = img.getpixel((int(875 * scale_x), int(23 * scale_y))) #white tournament mode icon
     pixel2 = img.getpixel((int(320 * scale_x), int(10 * scale_y))) #back button area
     
     # Define the target color and deviation
