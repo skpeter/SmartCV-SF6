@@ -121,7 +121,7 @@ def detect_stage_select_screen():
             previous_states.append(payload['state'])
             # reset payload to original values
             payload['stage'] = None
-            if payload['players'][0]['character'] == None: detect_characters_and_tags()
+        if payload['players'][0]['character'] == None: detect_characters_and_tags()
 
 
 
