@@ -22,7 +22,7 @@ It's a project that uses pixel detection to recognize certain situations in the 
 - - Choosing these options will generate a command that you should copy and paste on your terminal/command prompt. PyTorch weighs around 3GB, so take your time.
 
 ## Step 2: OBS Setup
-### If you are playing Rivals 2 from a PC and not receiving game feed from a capture card / console, you can skip this step!
+### If you are running the game from the same PC and not receiving game feed from a capture card / console, you can skip this step!
 
 SmartCV will read from a separate feed from OBS that will be provided to it. This is where Advanced Scene Switcher comes in. Once you have it installed, open it on the Tools tab:
 ![Advanced Scene Switcher Setup](img/guide1.jpg)
