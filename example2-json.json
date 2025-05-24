@@ -1,19 +1,15 @@
 {
-    "state": "in_game",
-    "is_results_screen": false,
-    "stage": "Battlefield",
+    "state": "character_select",
     "players": [
         {
-            "name": "RED TRUTH",
-            "character": "ROB 0",
-            "stocks": 3,
-            "damage": 0
+            "name": "",
+            "character": "",
+            "rounds": 2
         },
         {
-            "name": "whizz",
-            "character": "PYRA MYTHRA",
-            "stocks": 3,
-            "damage": 0
+            "name": "",
+            "character": "",
+            "rounds": 2
         }
     ]
 }
