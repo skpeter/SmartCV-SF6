@@ -286,6 +286,9 @@ def determine_winner(img, scale_x, scale_y, perfect=False):
 
 
 def detect_game_end():
+    """
+    DEPRECATED
+    """
     global config, payload, previous_states, feed_path, capture_mode, executable_title
     if payload['players'][0]['rounds'] > 1 and payload['players'][1]['rounds'] > 1: return
 
@@ -323,7 +326,8 @@ def detect_result_screen():
     img, scale_x, scale_y = capture_screen()
     if not img: return
     pixel = img.getpixel((int(263 * scale_x), int(390 * scale_y))) #the win/lose text for player 1
-    pixel2 = img.getpixel((int(1440 * scale_x), int(390 * scale_y))) #the win/lose text for player 2
+    pixel2 = img.getpixel((int(263 * scale_x), int(447 * scale_y))) #the win/lose text for player 1
+    # pixel2 = img.getpixel((int(1440 * scale_x), int(390 * scale_y))) #the win/lose text for player 2
     
     # Define the target color and deviation
     target_color = (222, 61, 2)  #red "WIN" text
@@ -336,10 +340,10 @@ def detect_result_screen():
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
         print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Result screen detected")
-        if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation):
+        if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
             payload['players'][1]['rounds'] = 0
             print(f"{payload['players'][0]['character']} wins!")
-        elif is_within_deviation(pixel, target_color2, deviation) and is_within_deviation(pixel2, target_color, deviation):
+        elif is_within_deviation(pixel, target_color2, deviation) and is_within_deviation(pixel2, target_color2, deviation):
             payload['players'][0]['rounds'] = 0
             print(f"{payload['players'][1]['character']} wins!")
 
