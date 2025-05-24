@@ -11,6 +11,7 @@ It's a project that uses pixel detection to recognize certain situations in the 
 - [Advanced Scene Switcher OBS Plugin (optional if streaming)](https://github.com/WarmUpTill/SceneSwitcher/releases)
 - Your copy of Guilty Gear -STRIVE- must be in **English**. Support for other languages is being looked into.
 
+## Installation
 ### Step 1.1: Installing the CPU version
 - Installing the CPU version is very easy. Just download the compiled release.zip [here](https://github.com/skpeter/smartcv/releases).
 - You can skip to step 2 from here.
@@ -21,7 +22,7 @@ It's a project that uses pixel detection to recognize certain situations in the 
 ![PyTorch installation page](img/install1.jpg)
 - - Choosing these options will generate a command that you should copy and paste on your terminal/command prompt. PyTorch weighs around 3GB, so take your time.
 
-## Step 2: OBS Setup
+### Step 2: OBS Setup
 ### If you are running the game from the same PC and not receiving game feed from a capture card / console, you can skip this step!
 
 SmartCV will read from a separate feed from OBS that will be provided to it. This is where Advanced Scene Switcher comes in. Once you have it installed, open it on the Tools tab:
@@ -33,7 +34,7 @@ SmartCV will read from a separate feed from OBS that will be provided to it. Thi
 - - You can set the path to save the screenshot anywhere you'd like (SmartCV must have access to it), but it is **highly recommended** that you save the screenshot as a **WEBP**. This image format causes the least amount of issues and is very lightweight, however if for some reason you can't use WEBPs, you can save it as a JPG instead. 
 - Go to SmartCV's `config.ini` file, set the `capture_mode` setting to `obs` and set the `feed_path` setting to the path where OBS is saving the screenshots.
 
-## Step 3: Usage
+### Step 3: Usage
 - To run the GPU version of the app, open the `smartcv.bat` file. To run the CPU version just open `smartcv.exe`.
 **From here all you need to do is follow the on-screen instructions for the game detection to start.**
 **If using OBS, make sure it is open and do not disable the game capture source!**
