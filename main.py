@@ -27,12 +27,12 @@ payload = {
         {
             "name": None,
             "character": None,
-            "rounds": None,
+            "rounds": 2,
         },
         {
             "name": None,
             "character": None,
-            "rounds": None,
+            "rounds": 2,
         }
     ]
 }
@@ -197,21 +197,20 @@ def detect_versus_screen():
     return
 
 def detect_player_tags():
-    global config, payload, previous_states, feed_path, capture_mode, executable_title
-    if payload['players'][0]['name'] is not None and payload['players'][1]['name'] is not None: return
-    img, scale_x, scale_y = capture_screen()
-    if not img: return
-    pixel1 = img.getpixel((int(365 * scale_x), int(160 * scale_y))) #player 1 tag
-    pixel2 = img.getpixel((int(1555 * scale_x), int(160 * scale_y))) #player 2 tag
-    
-    # Define the target color and deviation
-    target_color = (36, 0, 0)  #tag bg color
-    deviation = 0.1
-    
-    if is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
-        #rotate the image by 20 degrees to read the text
-        tag1 = read_text(img.rotate(20, expand=True), (int(85 * scale_x), int(165 * scale_y), int(320 * scale_x), int(40 * scale_y)))
-        tag2 = read_text(img.rotate(-20, expand=True), (int(1520 * scale_x), int(165 * scale_y), int(320 * scale_x), int(40 * scale_y)))
+    def action():
+        global config, payload, previous_states, feed_path, capture_mode, executable_title
+        time.sleep(0.5)
+        # print(payload['players'][0]['name'], payload['players'][1]['name'])
+        if payload['players'][0]['name'] != None and payload['players'][1]['name'] != None: return
+        img, scale_x, scale_y = capture_screen()
+        if not img: return
+
+        tag1 = read_text(img, (int(600 * scale_x), int(60 * scale_y), int(720 * scale_x), int(65 * scale_y)))
+        cropped_img = img.crop((int(600 * scale_x), int(60 * scale_y), int(600 * scale_x) + int(720 * scale_x), int(60 * scale_y) + int(65 * scale_y)))
+        cropped_img.save("cropped.png")
+        tag2 = read_text(img, (int(600 * scale_x), int(905 * scale_y), int(720 * scale_x), int(65 * scale_y)))
+        cropped2 = img.crop((int(600 * scale_x), int(905 * scale_y), int(600 * scale_x) + int(720 * scale_x), int(905 * scale_y) + int(65 * scale_y)))
+        cropped2.save("cropped2.png")
         if tag1 is not None and tag2 is not None:
             payload['players'][0]['name'], payload['players'][1]['name'] = tag1.strip(), tag2.strip()
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 tag:", payload['players'][0]['name'])
@@ -219,6 +218,8 @@ def detect_player_tags():
         else:
             for player in payload['players']:
                 player['name'] = False
+        return
+    threading.Thread(target=action).start()
     return
 
 def detect_rounds(red_only=False):
@@ -237,8 +238,9 @@ def detect_rounds(red_only=False):
     
     if is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
         payload['state'] = "in_game"
-        payload['players'][0]['rounds'] = 2
-        payload['players'][1]['rounds'] = 2
+        for player in payload['players']:
+                player['rounds'] = 2
+                player['name'] = None
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Match has started!")
@@ -261,7 +263,7 @@ def determine_winner(img, scale_x, scale_y, perfect=False):
 
     # crop image to the area of interest
     img = img.crop((x, y, x + w, y + h))
-    # the text showing the winner is in the corner of the screen rotated by 60 degrees
+    # the text showing the winner is in the corner of the screen rotated by 70 degrees
     img = img.rotate(70 if not perfect else 344, expand=True)
     # Convert image from PIL to cv2
     img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
@@ -347,14 +349,15 @@ def run_detection():
         try:
             if payload['state'] == None:
                 detect_character_select_screen()
+                detect_versus_screen()
             elif payload['state'] == "character_select":
                 detect_versus_screen()
                 gc.collect()
             elif payload['state'] == "loading":
                 detect_rounds(red_only=True)
+                detect_player_tags()
             elif payload['state'] == "in_game":
                 detect_character_select_screen()
-                detect_player_tags()
                 detect_rounds()
                 # detect_game_end()
                 detect_result_screen()
