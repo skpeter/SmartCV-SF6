@@ -17,6 +17,7 @@ from tag_matching import findBestMatch
 import mss
 import pygetwindow as gw
 import traceback
+import dialog
 from datetime import datetime
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -160,8 +161,8 @@ def detect_characters(repeat=False):
         # signal to the main loop that character and tag detection is in progress
         if payload['state'] != "loading": return
         # Initialize the reader
-        character1 = read_text(img, (int(240 * scale_x), int(415 * scale_y), int(515 * scale_x), int(80 * scale_y)))
-        character2 = read_text(img, (int(240 * scale_x), int(615 * scale_y), int(515 * scale_x), int(80 * scale_y)))
+        character1 = read_text(img, (int(215 * scale_x), int(410 * scale_y), int(565 * scale_x), int(100 * scale_y)))
+        character2 = read_text(img, (int(215 * scale_x), int(610 * scale_y), int(565 * scale_x), int(100 * scale_y)))
         if character1 is not None and character2 is not None:
             character1 = character1.split(" ")[0].replace("KIGO", "NAGO")
             character2 = character2.split(" ")[0].replace("KIGO", "NAGO")
@@ -199,18 +200,12 @@ def detect_versus_screen():
 def detect_player_tags():
     def action():
         global config, payload, previous_states, feed_path, capture_mode, executable_title
-        time.sleep(0.5)
-        # print(payload['players'][0]['name'], payload['players'][1]['name'])
         if payload['players'][0]['name'] != None and payload['players'][1]['name'] != None: return
         img, scale_x, scale_y = capture_screen()
         if not img: return
 
-        tag1 = read_text(img, (int(600 * scale_x), int(60 * scale_y), int(720 * scale_x), int(65 * scale_y)))
-        cropped_img = img.crop((int(600 * scale_x), int(60 * scale_y), int(600 * scale_x) + int(720 * scale_x), int(60 * scale_y) + int(65 * scale_y)))
-        cropped_img.save("cropped.png")
-        tag2 = read_text(img, (int(600 * scale_x), int(905 * scale_y), int(720 * scale_x), int(65 * scale_y)))
-        cropped2 = img.crop((int(600 * scale_x), int(905 * scale_y), int(600 * scale_x) + int(720 * scale_x), int(905 * scale_y) + int(65 * scale_y)))
-        cropped2.save("cropped2.png")
+        tag1 = read_text(img, (int(575 * scale_x), int(35 * scale_y), int(770 * scale_x), int(115 * scale_y)))
+        tag2 = read_text(img, (int(575 * scale_x), int(880 * scale_y), int(770 * scale_x), int(115 * scale_y)))
         if tag1 is not None and tag2 is not None:
             payload['players'][0]['name'], payload['players'][1]['name'] = tag1.strip(), tag2.strip()
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 tag:", payload['players'][0]['name'])
@@ -219,6 +214,7 @@ def detect_player_tags():
             for player in payload['players']:
                 player['name'] = False
         return
+    time.sleep(0.5)
     threading.Thread(target=action).start()
     return
 
@@ -240,7 +236,6 @@ def detect_rounds(red_only=False):
         payload['state'] = "in_game"
         for player in payload['players']:
                 player['rounds'] = 2
-                player['name'] = None
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Match has started!")
@@ -386,23 +381,55 @@ async def send_data(websocket):
             await websocket.send(json.dumps(payload))
             await asyncio.sleep(refresh_rate)
     except websockets.exceptions.ConnectionClosedOK:
-        # print("Connection closed normally by client")
         pass
     except websockets.exceptions.ConnectionClosedError as e:
-        print(f"Connection closed with error: {e}")
+        if "no close frame received or sent" not in str(e):
+            print(f"Connection error from client: {e}")
+
+processing_data = False
+async def receive_data(websocket):
+    try:
+        async for message in websocket:
+            if "entrants:" in message and processing_data == False and config.get('settings', 'capture_mode') == 'game':
+                if str(payload['players'][0]['name']) in str(message) and str(payload['players'][1]['name']) in str(message): return
+                def doTask():
+                    global processing_data
+                    processing_data = True
+                    players = str(message).replace("entrants:", "").strip().split(":")
+                    chosen_player = dialog.choose_player_side(players[0], players[1])
+                    if chosen_player == players[0]:
+                        payload['players'][0]['name'] = players[0]
+                        payload['players'][1]['name'] = players[1]
+                    elif chosen_player == players[1]:
+                        payload['players'][0]['name'] = players[1]
+                        payload['players'][1]['name'] = players[0]
+                    processing_data = False
+                threading.Thread(target=doTask, daemon=True).start()
+    except websockets.exceptions.ConnectionClosedOK:
         pass
-    except Exception as e:
-        print(f"Unexpected error: {e}")
+    except websockets.exceptions.ConnectionClosedError as e:
+        if "no close frame received or sent" not in str(e):
+            print(f"Connection error from client: {e}")
+
+async def handle_connection(websocket):
+    send_task = asyncio.create_task(send_data(websocket))
+    receive_task = asyncio.create_task(receive_data(websocket))
+    done, pending = await asyncio.wait(
+        [send_task, receive_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    for task in pending:
+        task.cancel()
 
 def start_websocket_server():
     async def start_server():
         async with websockets.serve(
-            send_data,
+            handle_connection,
             "localhost",
             config.getint('settings', 'server_port'),
-            ping_interval=60,  # Send ping every 20 seconds
-            ping_timeout=90,   # Wait 10 seconds for pong response
-            close_timeout=15   # Wait 10 seconds for close handshake
+            ping_interval=60,  # Send ping every 60 seconds
+            ping_timeout=90,   # Wait 90 seconds for pong response
+            close_timeout=15   # Wait 15 seconds for close handshake
         ):
             await asyncio.Future()  # run forever
 
@@ -410,14 +437,10 @@ def start_websocket_server():
 
 if __name__ == "__main__":    
     # Start the detection thread
-    detection_thread = threading.Thread(target=run_detection)
-    detection_thread.daemon = True
-    detection_thread.start()
+    detection_thread = threading.Thread(target=run_detection, daemon=True).start()
     
     # Start the websocket server thread
-    websocket_thread = threading.Thread(target=start_websocket_server)
-    websocket_thread.daemon = True
-    websocket_thread.start()
+    websocket_thread = threading.Thread(target=start_websocket_server, daemon=True).start()
 
     print("All systems go. Please head to the character selection screen to start detection.")
 
