@@ -161,8 +161,14 @@ def detect_characters(repeat=False):
         # signal to the main loop that character and tag detection is in progress
         if payload['state'] != "loading": return
         # Initialize the reader
-        character1 = read_text(img, (int(215 * scale_x), int(410 * scale_y), int(565 * scale_x), int(100 * scale_y)))
-        character2 = read_text(img, (int(215 * scale_x), int(610 * scale_y), int(565 * scale_x), int(100 * scale_y)))
+        region1 = (int(215 * scale_x), int(410 * scale_y), int(565 * scale_x), int(100 * scale_y))
+        region2 = (int(215 * scale_x), int(610 * scale_y), int(565 * scale_x), int(100 * scale_y))
+        cropped_img1 = img.crop((region1[0], region1[1], region1[0] + region1[2], region1[1] + region1[3]))
+        cropped_img2 = img.crop((region2[0], region2[1], region2[0] + region2[2], region2[1] + region2[3]))
+        cropped_img1.save(f"debug_character1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+        cropped_img2.save(f"debug_character2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+        character1 = read_text(img, region1)
+        character2 = read_text(img, region2)
         if character1 is not None and character2 is not None:
             character1 = character1.split(" ")[0].replace("KIGO", "NAGO")
             character2 = character2.split(" ")[0].replace("KIGO", "NAGO")
