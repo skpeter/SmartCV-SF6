@@ -162,7 +162,7 @@ def detect_characters(repeat=False):
         if payload['state'] != "loading": return
         # Initialize the reader
         region1 = (int(215 * scale_x), int(410 * scale_y), int(565 * scale_x), int(100 * scale_y))
-        region2 = (int(215 * scale_x), int(610 * scale_y), int(565 * scale_x), int(100 * scale_y))
+        region2 = (int(215 * scale_x), int(600 * scale_y), int(565 * scale_x), int(100 * scale_y))
         cropped_img1 = img.crop((region1[0], region1[1], region1[0] + region1[2], region1[1] + region1[3]))
         cropped_img2 = img.crop((region2[0], region2[1], region2[0] + region2[2], region2[1] + region2[3]))
         cropped_img1.save(f"debug_character1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
