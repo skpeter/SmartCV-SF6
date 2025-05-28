@@ -21,6 +21,18 @@ import dialog
 from datetime import datetime
 config = configparser.ConfigParser()
 config.read('config.ini')
+previous_states = [None] # list of previous states to be used for state change detection
+
+reader = easyocr.Reader(['en'])
+
+refresh_rate = config.getfloat('settings', 'refresh_rate')
+capture_mode = config.get('settings', 'capture_mode')
+executable_title = config.get('settings', 'executable_title')
+feed_path = config.get('settings', 'feed_path')
+
+base_height = 1080
+base_width = 1920
+
 
 payload = {
     "state": None,
@@ -37,15 +49,6 @@ payload = {
         }
     ]
 }
-previous_states = [None] # list of previous states to be used for state change detection
-reader = easyocr.Reader(['en'])
-refresh_rate = config.getfloat('settings', 'refresh_rate')
-capture_mode = config.get('settings', 'capture_mode')
-executable_title = config.get('settings', 'executable_title')
-# Get the feed path from the config file
-feed_path = config.get('settings', 'feed_path')
-base_height = 1080
-base_width = 1920
 
 # Check if the pixel color is within the deviation range
 def is_within_deviation(color1, color2, deviation):
@@ -170,8 +173,8 @@ def detect_characters(repeat=False):
         character1 = read_text(img, region1)
         character2 = read_text(img, region2)
         if character1 is not None and character2 is not None:
-            character1 = character1.split(" ")[0].replace("KIGO", "NAGO")
-            character2 = character2.split(" ")[0].replace("KIGO", "NAGO")
+            character1 = character1.replace("KIGO", "NAGO")
+            character2 = character2.replace("KIGO", "NAGO")
             c1, c2 = findBestMatch(character1, ggst.characters), findBestMatch(character2, ggst.characters)
         else: return detect_characters(repeat=True)
         payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
@@ -238,10 +241,15 @@ def detect_rounds(red_only=False):
     target_color2 = (150, 156, 163)  #gray heart (lost round)
     deviation = 0.15
     
+    if payload['state'] == "in_game":
+        if is_within_deviation(pixel1, target_color, deviation):
+            if payload['players'][0]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
+            payload['players'][0]['rounds'] = 2
+        if is_within_deviation(pixel2, target_color, deviation):
+            if payload['players'][0]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
+            payload['players'][0]['rounds'] = 2
     if is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
         payload['state'] = "in_game"
-        for player in payload['players']:
-                player['rounds'] = 2
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Match has started!")
@@ -396,12 +404,12 @@ processing_data = False
 async def receive_data(websocket):
     try:
         async for message in websocket:
-            if "entrants:" in message and processing_data == False and config.get('settings', 'capture_mode') == 'game':
+            if "confirm-entrants:" in message and processing_data == False: # and config.get('settings', 'capture_mode') == 'game':
                 if str(payload['players'][0]['name']) in str(message) and str(payload['players'][1]['name']) in str(message): return
                 def doTask():
                     global processing_data
                     processing_data = True
-                    players = str(message).replace("entrants:", "").strip().split(":")
+                    players = str(message).replace("confirm-entrants:", "").strip().split(":")
                     chosen_player = dialog.choose_player_side(players[0], players[1])
                     if chosen_player == players[0]:
                         payload['players'][0]['name'] = players[0]
