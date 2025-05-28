@@ -342,7 +342,8 @@ def detect_result_screen():
     print(f"Detected pixels: {pixel} and {pixel2} on detect_result_screen - must match {target_color} or {target_color2}")
 
     if ((is_within_deviation(pixel, target_color, deviation) or is_within_deviation(pixel, target_color2, deviation))
-        and (is_within_deviation(pixel2, target_color, deviation) or is_within_deviation(pixel2, target_color2, deviation))):
+        # and (is_within_deviation(pixel2, target_color, deviation) or is_within_deviation(pixel2, target_color2, deviation))
+    ):
         payload['state'] = "game_end"
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
@@ -402,7 +403,7 @@ processing_data = False
 async def receive_data(websocket):
     try:
         async for message in websocket:
-            if "confirm-entrants:" in message and processing_data == False and config.get('settings', 'capture_mode') == 'game':
+            if "confirm-entrants:" in message and processing_data == False: # and config.get('settings', 'capture_mode') == 'game':
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"),f"- Received request to confirm players:", str(message).replace("confirm-entrants:", "").strip().split(":"))
                 if str(payload['players'][0]['name']) in str(message) and str(payload['players'][1]['name']) in str(message): return True
                 def doTask():
