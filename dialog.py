@@ -23,16 +23,31 @@ def choose_player_side(player1: str, player2: str):
 
     def select_player(name):
         chosen_player["name"] = name
-        root.destroy()
+        fade_out()
 
     root = tk.Tk()
     root.configure(bg="dark gray")
     root.overrideredirect(True)  # removes the title bar and close button
-    root.title("Choose Player 1")
     root.attributes("-topmost", True)  # keep the window always active
 
-    # Calculate the position for centering the window
-    # Set an initial width and height for the window
+    root.attributes("-alpha", 0.0)
+    def fade_in(alpha=0.0):
+        alpha += 0.05
+        if alpha > 1.0:
+            alpha = 1.0
+        root.attributes("-alpha", alpha)
+        if alpha < 1.0:
+            root.after(25, fade_in, alpha)
+    fade_in()
+
+    def fade_out(alpha=1.0):
+        alpha -= 0.05
+        if alpha <= 0:
+            root.destroy()
+        else:
+            root.attributes("-alpha", alpha)
+            root.after(10, fade_out, alpha)
+
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     width = int(screen_width - screen_width / 5)
