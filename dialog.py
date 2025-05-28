@@ -101,7 +101,6 @@ def choose_player_side(player1: str, player2: str):
             while True:
                 try:
                     for event in pygame.event.get():
-                        print(event)
                         # allow hot-plug by reinitializing joysticks when a device is added
                         if event.type == pygame.JOYDEVICEADDED:
                             joystick = pygame.joystick.Joystick(event.device_index)
@@ -132,4 +131,3 @@ def choose_player_side(player1: str, player2: str):
 
     root.mainloop()
     return chosen_player["name"]
-
