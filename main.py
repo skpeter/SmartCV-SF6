@@ -130,16 +130,16 @@ def detect_character_select_screen():
                 player['name'] = None
     return
 
-def read_text(img, region: tuple[int, int, int, int]):
+def read_text(img, region: tuple[int, int, int, int], contrast=None):
     global payload, reader
     # print("Attempting to read text...")
     # Define the area to read
     x, y, w, h = region
     cropped_img = img.crop((x, y, x + w, y + h))
 
-    # Convert image from PIL to cv2
     cropped_img = cv2.cvtColor(np.array(cropped_img), cv2.COLOR_RGB2GRAY)
-        
+    if contrast: cropped_img = cv2.convertScaleAbs(cropped_img, alpha=contrast, beta=0)
+
     # Use OCR to read the text from the image
     result = reader.readtext(cropped_img, paragraph=False)
 
@@ -169,8 +169,6 @@ def detect_characters():
         character1 = read_text(img, region1)
         character2 = read_text(img, region2)
         if character1 is not None and character2 is not None:
-            character1 = character1.replace("KIGO", "NAGO")
-            character2 = character2.replace("KIGO", "NAGO")
             c1, c2 = findBestMatch(character1, ggst.characters), findBestMatch(character2, ggst.characters)
         else: return detect_characters()
         payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
@@ -222,14 +220,17 @@ def detect_player_tags():
     threading.Thread(target=action).start()
     return
 
-def detect_rounds(red_only=False):
+def detect_rounds(starting=False):
     global config, payload, previous_states, feed_path, capture_mode, executable_title
-    if payload['players'][0]['rounds'] < 2 and payload['players'][1]['rounds'] < 2 and not red_only: return
+    if payload['players'][0]['rounds'] < 2 and payload['players'][1]['rounds'] < 2 and not starting: return
         
     img, scale_x, scale_y = capture_screen()
     if not img: return
-    pixel1 = img.getpixel((int(800 * scale_x), int(95 * scale_y))) #p1 heart
-    pixel2 = img.getpixel((int(1120 * scale_x), int(95 * scale_y))) #p2 heart
+    pixel1 = img.getpixel((int(800 * scale_x), int(90 * scale_y))) #p1 heart
+    pixel2 = img.getpixel((int(1120 * scale_x), int(90 * scale_y))) #p2 heart
+
+    if config.getboolean('settings', 'debug_mode', fallback=False):
+        print("Player 1 heart pixel:", pixel1, "Player 2 heart pixel:", pixel2)
     
     # Define the target color and deviation
     target_color = (213, 33, 48)  #red heart (still has round)
@@ -249,7 +250,7 @@ def detect_rounds(red_only=False):
         if is_within_deviation(pixel2, target_color, deviation):
             if payload['players'][1]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
             payload['players'][1]['rounds'] = 2
-    if not red_only:
+    if not starting:
         if is_within_deviation(pixel1, target_color2, deviation):
             if payload['players'][0]['rounds'] != 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 lost a round")
             payload['players'][0]['rounds'] = 1
@@ -329,28 +330,37 @@ def detect_result_screen():
     if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0: return
     img, scale_x, scale_y = capture_screen()
     if not img: return
-    pixel = img.getpixel((int(263 * scale_x), int(390 * scale_y))) #the win/lose text for player 1
-    pixel2 = img.getpixel((int(263 * scale_x), int(447 * scale_y))) #the win/lose text for player 1
-    # pixel2 = img.getpixel((int(1440 * scale_x), int(390 * scale_y))) #the win/lose text for player 2
-    
+    pixel = img.getpixel((int(1 * scale_x), int(105 * scale_y))) #the win/lose text for player 1
+    pixel2 = img.getpixel((int(1 * scale_x), int(975 * scale_y))) #the win/lose text for player 1
     # Define the target color and deviation
-    target_color = (222, 61, 2)  #red "WIN" text
-    target_color2 = (14, 111, 156)  #blue "LOSE" text
+    target_color = (140, 19, 5)  # red area on the top
+    target_color2 = (36, 36, 36)  # gray area on the bottom
     deviation = 0.2
+    if config.getboolean('settings', 'debug_mode', fallback=False):
+        print("Detected result screen pixels - player 1:", pixel, "player 2:", pixel2)
 
-    if ((is_within_deviation(pixel, target_color, deviation) or is_within_deviation(pixel, target_color2, deviation))
-        # and (is_within_deviation(pixel2, target_color, deviation) or is_within_deviation(pixel2, target_color2, deviation)) #for detecting on p2 side only
-    ):
-        payload['state'] = "game_end"
-        if payload['state'] != previous_states[-1]:
-            previous_states.append(payload['state'])
-        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Result screen detected")
-        if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
-            payload['players'][1]['rounds'] = 0
-            print(f"- {payload['players'][0]['character']} wins!")
-        elif is_within_deviation(pixel, target_color2, deviation) and is_within_deviation(pixel2, target_color2, deviation):
-            payload['players'][0]['rounds'] = 0
-            print(f"- {payload['players'][1]['character']} wins!")
+    if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))):
+        def action():
+            if payload['state'] != 'in_game': return
+            p2flag = False
+            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Result screen detected")
+            result = read_text(img, (int(65 * scale_x), int(335 * scale_y), int(285 * scale_x), int(160 * scale_y)), contrast=3)
+            if not result:
+                result = read_text(img, (int(1255 * scale_x), int(335 * scale_y), int(285 * scale_x), int(160 * scale_y)), contrast=3)
+                p2flag = True
+            if result: result = findBestMatch(result,["WIN", "LOSE"])
+            if result == "WIN" or p2flag and result == "LOSE":
+                payload['players'][1]['rounds'] = 0
+                print(f"- {payload['players'][0]['character']} wins!")
+            elif result == "LOSE" or p2flag and result == "WIN":
+                payload['players'][0]['rounds'] = 0
+                print(f"- {payload['players'][1]['character']} wins!")
+            if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0:
+                payload['state'] = "game_end"
+                if payload['state'] != previous_states[-1]:
+                    previous_states.append(payload['state'])
+        threading.Thread(target=action, daemon=True).start()
+
 
 def run_detection():
     global payload, previous_states, refresh_rate
@@ -363,7 +373,7 @@ def run_detection():
                 detect_versus_screen()
                 gc.collect()
             elif payload['state'] == "loading":
-                detect_rounds(red_only=True)
+                detect_rounds(starting=True)
                 detect_player_tags()
             elif payload['state'] == "in_game":
                 detect_character_select_screen()
@@ -372,7 +382,7 @@ def run_detection():
                 detect_result_screen()
             elif payload['state'] == "game_end":
                 detect_character_select_screen()
-                detect_rounds(red_only=True)
+                detect_rounds(starting=True)
         except Exception as e:
             print(f"Error: {str(e)}")
             print("Stack trace:")
