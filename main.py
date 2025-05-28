@@ -154,11 +154,11 @@ def read_text(img, region: tuple[int, int, int, int]):
 
     return result
 
-def detect_characters(repeat=False):
+def detect_characters():
     global config, payload, refresh_rate, feed_path, capture_mode, executable_title
     img, scale_x, scale_y = capture_screen()
     if not img: return
-    if repeat: time.sleep(0.1)
+    time.sleep(0.5)
 
     def read_characters_and_names():
         # signal to the main loop that character and tag detection is in progress
@@ -176,7 +176,7 @@ def detect_characters(repeat=False):
             character1 = character1.replace("KIGO", "NAGO")
             character2 = character2.replace("KIGO", "NAGO")
             c1, c2 = findBestMatch(character1, ggst.characters), findBestMatch(character2, ggst.characters)
-        else: return detect_characters(repeat=True)
+        else: return detect_characters()
         payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
         print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 character:", c1)
         print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 character:", c2)
