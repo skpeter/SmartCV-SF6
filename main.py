@@ -236,21 +236,21 @@ def detect_rounds(red_only=False):
     target_color = (213, 33, 48)  #red heart (still has round)
     target_color2 = (150, 156, 163)  #gray heart (lost round)
     deviation = 0.15
-    
-    if payload['state'] == "in_game":
-        if is_within_deviation(pixel1, target_color, deviation):
-            if payload['players'][0]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
-            payload['players'][0]['rounds'] = 2
-        if is_within_deviation(pixel2, target_color, deviation):
-            if payload['players'][0]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
-            payload['players'][0]['rounds'] = 2
+
     if is_within_deviation(pixel1, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
         payload['state'] = "in_game"
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Match has started!")
             return
-    elif not red_only:
+    if payload['state'] == "in_game":
+        if is_within_deviation(pixel1, target_color, deviation):
+            if payload['players'][0]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
+            payload['players'][0]['rounds'] = 2
+        if is_within_deviation(pixel2, target_color, deviation):
+            if payload['players'][1]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
+            payload['players'][1]['rounds'] = 2
+    if not red_only:
         if is_within_deviation(pixel1, target_color2, deviation):
             if payload['players'][0]['rounds'] != 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 lost a round")
             payload['players'][0]['rounds'] = 1
@@ -337,12 +337,10 @@ def detect_result_screen():
     # Define the target color and deviation
     target_color = (222, 61, 2)  #red "WIN" text
     target_color2 = (14, 111, 156)  #blue "LOSE" text
-    deviation = 0.1
-
-    print(f"Detected pixels: {pixel} and {pixel2} on detect_result_screen - must match {target_color} or {target_color2}")
+    deviation = 0.15
 
     if ((is_within_deviation(pixel, target_color, deviation) or is_within_deviation(pixel, target_color2, deviation))
-        # and (is_within_deviation(pixel2, target_color, deviation) or is_within_deviation(pixel2, target_color2, deviation))
+        # and (is_within_deviation(pixel2, target_color, deviation) or is_within_deviation(pixel2, target_color2, deviation)) #for detecting on p2 side only
     ):
         payload['state'] = "game_end"
         if payload['state'] != previous_states[-1]:
