@@ -1,7 +1,10 @@
 import tkinter as tk
 import threading, time
-from inputs import get_gamepad
+import pygame
 import tkinter.font as tkFont
+
+pygame.init()
+pygame.joystick.init()
 
 def on_focus_in(event):
     current_font = tkFont.Font(font=event.widget.cget("font"))
@@ -15,6 +18,8 @@ def on_focus_out(event):
 
 def choose_player_side(player1: str, player2: str):
     chosen_player = {"name": None}
+    current_selection = {"option": None}
+
 
     def select_player(name):
         chosen_player["name"] = name
@@ -40,7 +45,7 @@ def choose_player_side(player1: str, player2: str):
     container.configure(bg="dark gray")
     container.pack(expand=True)
 
-    prompt = tk.Label(container, font=("Helvetica", 24), text="Select which player will be Player 1:\n⬅️ (left side)\nControllers are enabled!", bg="dark gray")
+    prompt = tk.Label(container, font=("Helvetica", 24), text="Select which player will be Player 1:\n⬅️ (left side)\nControllers are enabled!    Press X / A / Square to select", bg="dark gray")
     prompt.pack(pady=10)
 
     button1 = tk.Button(container, text=player1, width=50, font=("Helvetica", 32), command=lambda: select_player(player1))
@@ -48,6 +53,33 @@ def choose_player_side(player1: str, player2: str):
 
     button2 = tk.Button(container, text=player2, width=50, font=("Helvetica", 32), command=lambda: select_player(player2))
     button2.pack(padx=10, pady=5)
+
+    confirmation_label = tk.Label(
+        container,
+        text="",
+        font=("Helvetica", 24),
+        bg="dark gray",
+        fg="black"
+    )
+    confirmation_label.pack(pady=10)
+
+    def handle_selection(option):
+        if current_selection["option"] == option:
+            select_player(option)
+        else:
+            current_selection["option"] = option
+            confirmation_label.config(text="Press again to confirm")
+
+    def clear_confirmation(event):
+        # Hide the confirmation if focus changes to a button that isn’t the one already selected
+        if current_selection["option"] and event.widget.cget("text") != current_selection["option"]:
+            current_selection["option"] = None
+            confirmation_label.config(text="")
+
+    button1.config(command=lambda: handle_selection(player1))
+    button2.config(command=lambda: handle_selection(player2))
+    button1.bind("<FocusIn>", clear_confirmation, add="+")
+    button2.bind("<FocusIn>", clear_confirmation, add="+")
 
     # Set initial focus to button1
     button1.focus_set()
@@ -65,29 +97,39 @@ def choose_player_side(player1: str, player2: str):
         container.bind_all("<Down>", lambda event: button2.focus_set())
         container.bind_all("<Return>", lambda event: (button1.invoke() if root.focus_get() == button1 else button2.invoke()))
         def poll_gamepad():
+            pygame.joystick.get_count()
             while True:
                 try:
-                    events = get_gamepad()
-                except Exception as e:
-                    time.sleep(2)
-                    continue
-                for event in events:
-                    print(event.code, event.state, event.ev_type)
-                    if event.ev_type in ['Key', 'Absolute']:
-                    # dpad up/down, compatible with both xinput and DS4
-                        if event.code == 'ABS_HAT0Y':
-                            if event.state == -1:
+                    for event in pygame.event.get():
+                        print(event)
+                        # allow hot-plug by reinitializing joysticks when a device is added
+                        if event.type == pygame.JOYDEVICEADDED:
+                            joystick = pygame.joystick.Joystick(event.device_index)
+                            joystick.init()
+                        # left analog stick vertical movement (axis 1) for focus control
+                        if event.type == pygame.JOYAXISMOTION:
+                            if event.axis == 1:
+                                if event.value < -0.5:
+                                    root.after(0, button1.focus_set)
+                                elif event.value > 0.5:
+                                    root.after(0, button2.focus_set)
+                        # d-pad vertical movement for focus control
+                        if event.type == pygame.JOYHATMOTION:
+                            hat_x, hat_y = event.value
+                            if hat_y == 1:
                                 root.after(0, button1.focus_set)
-                            elif event.state == 1:
+                            elif hat_y == -1:
                                 root.after(0, button2.focus_set)
-                        # Mapped to A and X xinput buttons (must test on DS4)
-                        if (event.code == 'BTN_SOUTH' or event.code == 'BTN_WEST') and event.state:
-                            root.after(0, lambda: button1.invoke() if root.focus_get() == button1 else button2.invoke())
-                time.sleep(0.02)
+                        # assuming button 0 is the "A"/"X" button to select
+                        if event.type == pygame.JOYBUTTONDOWN:
+                            if event.button == 0:
+                                root.after(0, lambda: button1.invoke() if root.focus_get() == button1 else button2.invoke())
+                    time.sleep(0.01)
+                except Exception as e:
+                    pass
         threading.Thread(target=poll_gamepad, daemon=True).start()
-    root.after(2000, enable_controls)
+    root.after(100, enable_controls)
 
     root.mainloop()
     return chosen_player["name"]
 
-# choose_player_side("CamposJL", "Andromeda")
