@@ -199,7 +199,6 @@ def detect_versus_screen():
             previous_states.append(payload['state'])
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Match is now loading...")
             detect_characters()
-
     return
 
 def detect_player_tags():
@@ -337,7 +336,7 @@ def detect_result_screen():
     # Define the target color and deviation
     target_color = (222, 61, 2)  #red "WIN" text
     target_color2 = (14, 111, 156)  #blue "LOSE" text
-    deviation = 0.15
+    deviation = 0.2
 
     if ((is_within_deviation(pixel, target_color, deviation) or is_within_deviation(pixel, target_color2, deviation))
         # and (is_within_deviation(pixel2, target_color, deviation) or is_within_deviation(pixel2, target_color2, deviation)) #for detecting on p2 side only
