@@ -166,10 +166,6 @@ def detect_characters():
         # Initialize the reader
         region1 = (int(215 * scale_x), int(410 * scale_y), int(565 * scale_x), int(100 * scale_y))
         region2 = (int(215 * scale_x), int(600 * scale_y), int(565 * scale_x), int(100 * scale_y))
-        cropped_img1 = img.crop((region1[0], region1[1], region1[0] + region1[2], region1[1] + region1[3]))
-        cropped_img2 = img.crop((region2[0], region2[1], region2[0] + region2[2], region2[1] + region2[3]))
-        cropped_img1.save(f"debug_character1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
-        cropped_img2.save(f"debug_character2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
         character1 = read_text(img, region1)
         character2 = read_text(img, region2)
         if character1 is not None and character2 is not None:
@@ -343,6 +339,8 @@ def detect_result_screen():
     target_color2 = (14, 111, 156)  #blue "LOSE" text
     deviation = 0.1
 
+    print(f"Detected pixels: {pixel} and {pixel2} on detect_result_screen - must match {target_color} or {target_color2}")
+
     if ((is_within_deviation(pixel, target_color, deviation) or is_within_deviation(pixel, target_color2, deviation))
         and (is_within_deviation(pixel2, target_color, deviation) or is_within_deviation(pixel2, target_color2, deviation))):
         payload['state'] = "game_end"
@@ -351,10 +349,10 @@ def detect_result_screen():
         print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Result screen detected")
         if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color, deviation):
             payload['players'][1]['rounds'] = 0
-            print(f"{payload['players'][0]['character']} wins!")
+            print(f"- {payload['players'][0]['character']} wins!")
         elif is_within_deviation(pixel, target_color2, deviation) and is_within_deviation(pixel2, target_color2, deviation):
             payload['players'][0]['rounds'] = 0
-            print(f"{payload['players'][1]['character']} wins!")
+            print(f"- {payload['players'][1]['character']} wins!")
 
 def run_detection():
     global payload, previous_states, refresh_rate
@@ -406,7 +404,7 @@ async def receive_data(websocket):
         async for message in websocket:
             if "confirm-entrants:" in message and processing_data == False and config.get('settings', 'capture_mode') == 'game':
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"),f"- Received request to confirm players:", str(message).replace("confirm-entrants:", "").strip().split(":"))
-                if str(payload['players'][0]['name']) in str(message) and str(payload['players'][1]['name']) in str(message): return
+                if str(payload['players'][0]['name']) in str(message) and str(payload['players'][1]['name']) in str(message): return True
                 def doTask():
                     global processing_data
                     processing_data = True
