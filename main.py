@@ -404,7 +404,8 @@ processing_data = False
 async def receive_data(websocket):
     try:
         async for message in websocket:
-            if "confirm-entrants:" in message and processing_data == False: # and config.get('settings', 'capture_mode') == 'game':
+            if "confirm-entrants:" in message and processing_data == False and config.get('settings', 'capture_mode') == 'game':
+                print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"),f"- Received request to confirm players:", str(message).replace("confirm-entrants:", "").strip().split(":"))
                 if str(payload['players'][0]['name']) in str(message) and str(payload['players'][1]['name']) in str(message): return
                 def doTask():
                     global processing_data
