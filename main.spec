@@ -18,8 +18,8 @@ a = Analysis(
         'json',
         'websockets',
         'asyncio',
-        'easyocr'
-        'torch, torchvision, torchaudio'
+        'easyocr',
+        'torch', 'torchvision', 'torchaudio'
     ],
     hookspath=[],
     runtime_hooks=[],
@@ -41,7 +41,7 @@ exe = EXE(
     name='smartcv',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=True,
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
