@@ -165,24 +165,23 @@ def detect_characters():
     global payload
     img, scale_x, scale_y = capture_screen()
     if not img: return
-    time.sleep(0.5)
+    time.sleep(refresh_rate)
 
-    def read_characters_and_names():
-        # signal to the main loop that character and tag detection is in progress
-        if payload['state'] != "loading": return
-        # Initialize the reader
-        region1 = (int(215 * scale_x), int(410 * scale_y), int(565 * scale_x), int(100 * scale_y))
-        region2 = (int(215 * scale_x), int(600 * scale_y), int(565 * scale_x), int(100 * scale_y))
-        character1 = read_text(img, region1)
-        character2 = read_text(img, region2)
-        if character1 is not None and character2 is not None:
-            c1, c2 = findBestMatch(character1, ggst.characters), findBestMatch(character2, ggst.characters)
-        else: return detect_characters()
-        payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
-        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 character:", c1)
-        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 character:", c2)
+    # signal to the main loop that character and tag detection is in progress
+    if payload['state'] != "loading": return
+    # Initialize the reader
+    region1 = (int(215 * scale_x), int(410 * scale_y), int(565 * scale_x), int(100 * scale_y))
+    region2 = (int(215 * scale_x), int(600 * scale_y), int(565 * scale_x), int(100 * scale_y))
+    character1 = read_text(img, region1)
+    character2 = read_text(img, region2)
+    if character1 is not None and character2 is not None:
+        c1, c2 = findBestMatch(character1, ggst.characters), findBestMatch(character2, ggst.characters)
+    else: return detect_characters()
+    payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
+    print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 character:", c1)
+    print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 character:", c2)
 
-    threading.Thread(target=read_characters_and_names).start()
+    time.sleep(refresh_rate)
     return
 
 def detect_versus_screen():
@@ -207,24 +206,21 @@ def detect_versus_screen():
     return
 
 def detect_player_tags():
-    def action():
-        global payload
-        if payload['players'][0]['name'] != None and payload['players'][1]['name'] != None: return
-        img, scale_x, scale_y = capture_screen()
-        if not img: return
+    time.sleep(refresh_rate)
+    global payload
+    if payload['players'][0]['name'] != None and payload['players'][1]['name'] != None: return
+    img, scale_x, scale_y = capture_screen()
+    if not img: return
 
-        tag1 = read_text(img, (int(575 * scale_x), int(35 * scale_y), int(770 * scale_x), int(115 * scale_y)))
-        tag2 = read_text(img, (int(575 * scale_x), int(880 * scale_y), int(770 * scale_x), int(115 * scale_y)))
-        if tag1 is not None and tag2 is not None:
-            payload['players'][0]['name'], payload['players'][1]['name'] = tag1.strip(), tag2.strip()
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 tag:", payload['players'][0]['name'])
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 tag:", payload['players'][1]['name'])
-        else:
-            for player in payload['players']:
-                player['name'] = False
-        return
-    time.sleep(0.5)
-    threading.Thread(target=action).start()
+    tag1 = read_text(img, (int(575 * scale_x), int(35 * scale_y), int(770 * scale_x), int(115 * scale_y)))
+    tag2 = read_text(img, (int(575 * scale_x), int(880 * scale_y), int(770 * scale_x), int(115 * scale_y)))
+    if tag1 is not None and tag2 is not None:
+        payload['players'][0]['name'], payload['players'][1]['name'] = tag1.strip(), tag2.strip()
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 tag:", payload['players'][0]['name'])
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 tag:", payload['players'][1]['name'])
+    else:
+        for player in payload['players']:
+            player['name'] = False
     return
 
 def detect_round_start():
@@ -337,13 +333,12 @@ def detect_game_end():
     if is_within_deviation(pixelperfect1, target_color2, deviation) and is_within_deviation(pixelperfect2, target_color, deviation):
         perfect = True
     if perfect is not None:
-        def action():
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- ", "Perfect" if perfect else "Slash","!")
-            if determine_winner(img, scale_x, scale_y, perfect):
-                payload['state'] = "game_end"
-                if payload['state'] != previous_states[-1]:
-                    previous_states.append(payload['state'])
-        threading.Thread(target=action, daemon=True).start()
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Perfect!" if perfect else "- Slash!")
+        if determine_winner(img, scale_x, scale_y, perfect):
+            payload['state'] = "game_end"
+            if payload['state'] != previous_states[-1]:
+                previous_states.append(payload['state'])
+        time.sleep(refresh_rate)
     return
 
 def detect_result_screen():
@@ -361,59 +356,74 @@ def detect_result_screen():
         print("Detected result screen pixels - player 1:", pixel, "player 2:", pixel2)
 
     if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))):
-        def action():
-            if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0: return
-            pixel = img.getpixel((int(450 * scale_x), int(715 * scale_y))) # win box for player 1
-            pixel2 = img.getpixel((int(1735 * scale_x), int(715 * scale_y))) # lose box for player 2
-            target_color = (190, 0, 0)  # red
-            target_color2 = (0, 80, 144) # blue
-            if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))):
+        if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0: return
+        pixel = img.getpixel((int(450 * scale_x), int(715 * scale_y))) # win box for player 1
+        pixel2 = img.getpixel((int(1735 * scale_x), int(715 * scale_y))) # lose box for player 2
+        target_color = (190, 0, 0)  # red
+        target_color2 = (0, 80, 144) # blue
+        if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))):
+            payload['players'][1]['rounds'] = 0
+            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
+        pixel = img.getpixel((int(555 * scale_x), int(715 * scale_y))) # win box for player 2
+        pixel2 = img.getpixel((int(1630 * scale_x), int(715 * scale_y))) # lose box for player 1
+        if ((is_within_deviation(pixel, target_color2, deviation) and is_within_deviation(pixel2, target_color, deviation))):
+            payload['players'][0]['rounds'] = 0
+            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
+        else: 
+            result = read_text(img, (int(200 * scale_x), int(250 * scale_y), int(275 * scale_x), int(135 * scale_y)), colored=True, contrast=3) # player 1 win/lose text (ONLINE)
+            if result: result = findBestMatch(str(result),["WIN", "LOSE"])
+            if result == "WIN":
                 payload['players'][1]['rounds'] = 0
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
-            pixel = img.getpixel((int(555 * scale_x), int(715 * scale_y))) # win box for player 2
-            pixel2 = img.getpixel((int(1630 * scale_x), int(715 * scale_y))) # lose box for player 1
-            if ((is_within_deviation(pixel, target_color2, deviation) and is_within_deviation(pixel2, target_color, deviation))):
+            elif result == "LOSE":
                 payload['players'][0]['rounds'] = 0
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
-            else: 
-                result = read_text(img, (int(200 * scale_x), int(250 * scale_y), int(275 * scale_x), int(135 * scale_y)), colored=True, contrast=3) # player 1 win/lose text (ONLINE)
-                if result: result = findBestMatch(str(result),["WIN", "LOSE"])
-                if result == "WIN":
-                    payload['players'][1]['rounds'] = 0
-                    print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
-                elif result == "LOSE":
-                    payload['players'][0]['rounds'] = 0
-                    print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
-            if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0:
-                payload['state'] = "game_end"
-                if payload['state'] != previous_states[-1]:
-                    previous_states.append(payload['state'])
-        threading.Thread(target=action, daemon=True).start()
+        if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0:
+            payload['state'] = "game_end"
+            if payload['state'] != previous_states[-1]:
+                previous_states.append(payload['state'])
+        time.sleep(refresh_rate)
 
 
 def run_detection():
     global payload, previous_states, refresh_rate
     while True:
+        threads = []
         try:
             if payload['state'] == None:
-                detect_character_select_screen()
-                detect_versus_screen()
+                functions = [
+                    detect_character_select_screen,
+                    detect_versus_screen,
+                ]
             elif payload['state'] == "character_select":
-                detect_versus_screen()
-                gc.collect()
+                functions = [
+                    detect_versus_screen
+                ]
             elif payload['state'] == "loading":
-                detect_player_tags()
-                detect_round_start()
-                detect_rounds()
+                functions = [
+                    detect_player_tags,
+                    detect_round_start,
+                    detect_rounds
+                ]
             elif payload['state'] == "in_game":
-                detect_character_select_screen()
-                detect_rounds()
-                detect_game_end()
-                detect_result_screen()
+                functions = [
+                    detect_character_select_screen,
+                    detect_rounds,
+                    detect_game_end,
+                    detect_result_screen
+                ]
             elif payload['state'] == "game_end":
-                detect_result_screen()
-                detect_character_select_screen()
-                detect_round_start()
+                functions = [
+                    detect_result_screen,
+                    detect_character_select_screen,
+                    detect_round_start,
+                ]
+            for func in functions:
+                t = threading.Thread(target=func)
+                t.start()
+                threads.append(t)
+            for t in threads:
+                t.join()
         except Exception as e:
             print(f"Error: {str(e)}")
             print("Stack trace:")
@@ -456,6 +466,7 @@ async def receive_data(websocket):
                         payload['players'][1]['name'] = players[0]
                     processing_data = False
                 threading.Thread(target=doTask, daemon=True).start()
+                time.sleep(refresh_rate)
     except websockets.exceptions.ConnectionClosedOK:
         pass
     except websockets.exceptions.ConnectionClosedError as e:
