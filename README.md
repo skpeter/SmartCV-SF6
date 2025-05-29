@@ -51,6 +51,7 @@ As of this writing, only [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide
 
 ## Known Issues
 
+- No support for getting data by spectating online matches, only works for local play at the moment.
 - The app doesn't know how to differentiate handwarmers from actual matches. Please instruct your players to use the Restart or Quit options in the menu when being done with handwarmers. [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide) (the companion app) may be able to handle some cases where that doesn't happen.
 
 ## How does it work?
