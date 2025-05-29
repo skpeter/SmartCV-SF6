@@ -114,10 +114,14 @@ def detect_character_select_screen():
     # Define the target color and deviation
     target_color = (128, 30, 29)  #red player 1 side
     target_color2 = (18, 77, 107)  #blue player 2 side
+    target_color3 = (187, 0, 3)  #red player 1 side
+    target_color4 = (10, 108, 173)  #blue player 2 side
 
-    deviation = 0.15
+    deviation = 0.1
     
-    if is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation):
+    if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))
+        or (is_within_deviation(pixel, target_color3, deviation) and is_within_deviation(pixel2, target_color4, deviation))
+    ):
         payload['state'] = "character_select"
         print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Character select screen detected")
         if payload['state'] != previous_states[-1]:
@@ -329,11 +333,13 @@ def detect_game_end():
     if is_within_deviation(pixelperfect1, target_color2, deviation) and is_within_deviation(pixelperfect2, target_color, deviation):
         perfect = True
     if perfect is not None:
-        if determine_winner(img, scale_x, scale_y, perfect):
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Slash!")
-            payload['state'] = "game_end"
-            if payload['state'] != previous_states[-1]:
-                previous_states.append(payload['state'])
+        def action():
+            if determine_winner(img, scale_x, scale_y, perfect):
+                print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Slash!")
+                payload['state'] = "game_end"
+                if payload['state'] != previous_states[-1]:
+                    previous_states.append(payload['state'])
+        threading.Thread(target=action, daemon=True).start()
     return
 
 def detect_result_screen():
@@ -405,7 +411,6 @@ def run_detection():
                 detect_result_screen()
                 detect_character_select_screen()
                 detect_round_start()
-                detect_rounds()
         except Exception as e:
             print(f"Error: {str(e)}")
             print("Stack trace:")
