@@ -389,7 +389,6 @@ def detect_result_screen():
 
 def run_detection():
     global payload, previous_states, refresh_rate
-    # payload['state'] = 'in_game'
     while True:
         try:
             if payload['state'] == None:
