@@ -119,9 +119,13 @@ def detect_character_select_screen():
 
     deviation = 0.1
     
-    if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))
-        or (is_within_deviation(pixel, target_color3, deviation) and is_within_deviation(pixel2, target_color4, deviation))
-    ):
+    conditions = [
+        is_within_deviation(pixel, target_color, deviation),
+        is_within_deviation(pixel2, target_color2, deviation),
+        is_within_deviation(pixel, target_color3, deviation),
+        is_within_deviation(pixel2, target_color4, deviation)
+    ]
+    if sum(conditions) == 2:
         payload['state'] = "character_select"
         print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Character select screen detected")
         if payload['state'] != previous_states[-1]:
@@ -334,8 +338,8 @@ def detect_game_end():
         perfect = True
     if perfect is not None:
         def action():
+            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- ", "Perfect" if perfect else "Slash","!")
             if determine_winner(img, scale_x, scale_y, perfect):
-                print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Slash!")
                 payload['state'] = "game_end"
                 if payload['state'] != previous_states[-1]:
                     previous_states.append(payload['state'])
