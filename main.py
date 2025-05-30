@@ -357,25 +357,25 @@ def detect_result_screen():
 
     if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))):
         if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0: return
-        pixel = img.getpixel((int(450 * scale_x), int(715 * scale_y))) # win box for player 1
-        pixel2 = img.getpixel((int(1735 * scale_x), int(715 * scale_y))) # lose box for player 2
+        pixel = img.getpixel((int(450 * scale_x), int(730 * scale_y))) # win box for player 1
+        pixel2 = img.getpixel((int(1735 * scale_x), int(730 * scale_y))) # lose box for player 2
         target_color = (190, 0, 0)  # red
         target_color2 = (0, 80, 144) # blue
         if ((is_within_deviation(pixel, target_color, deviation) and is_within_deviation(pixel2, target_color2, deviation))):
             payload['players'][1]['rounds'] = 0
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
-        pixel = img.getpixel((int(555 * scale_x), int(715 * scale_y))) # win box for player 2
-        pixel2 = img.getpixel((int(1630 * scale_x), int(715 * scale_y))) # lose box for player 1
+        pixel = img.getpixel((int(555 * scale_x), int(730 * scale_y))) # lose box for player 1
+        pixel2 = img.getpixel((int(1630 * scale_x), int(730 * scale_y))) # win box for player 2
         if ((is_within_deviation(pixel, target_color2, deviation) and is_within_deviation(pixel2, target_color, deviation))):
             payload['players'][0]['rounds'] = 0
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
         else: 
-            result = read_text(img, (int(200 * scale_x), int(250 * scale_y), int(275 * scale_x), int(135 * scale_y)), colored=True, contrast=3) # player 1 win/lose text (ONLINE)
-            if result: result = findBestMatch(str(result),["WIN", "LOSE"])
-            if result == "WIN":
+            pixel = img.getpixel((int(1700 * scale_x), int(730 * scale_y))) # win box for online player
+            pixel2 = img.getpixel((int(1815 * scale_x), int(730 * scale_y))) # lose box for online player
+            if (is_within_deviation(pixel, target_color, deviation)):
                 payload['players'][1]['rounds'] = 0
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
-            elif result == "LOSE":
+            elif (is_within_deviation(pixel2, target_color2, deviation)):
                 payload['players'][0]['rounds'] = 0
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
         if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0:
