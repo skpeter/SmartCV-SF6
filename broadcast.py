@@ -14,6 +14,7 @@ def register_instance():
     info = ServiceInfo(
         type_=service_type,
         name=service_name,
+        addresses=[socket.inet_aton(ip)],
         port=service_port,
         properties={"device": hostname},
         server=f"{hostname}.local.",
