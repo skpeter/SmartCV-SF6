@@ -21,8 +21,8 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Install UPX (Windows)
-      run: choco install upx
+    # - name: Install UPX (Windows)
+    #   run: choco install upx
 
     - name: Install dependencies
       run: |
