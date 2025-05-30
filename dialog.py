@@ -3,9 +3,6 @@ import threading, time
 import pygame
 import tkinter.font as tkFont
 
-pygame.init()
-pygame.joystick.init()
-
 def on_focus_in(event):
     current_font = tkFont.Font(font=event.widget.cget("font"))
     current_font.configure(weight="bold")
@@ -17,6 +14,9 @@ def on_focus_out(event):
     event.widget.config(font=current_font)
 
 def choose_player_side(player1: str, player2: str):
+    pygame.init()
+    pygame.joystick.init()
+
     chosen_player = {"name": None}
     current_selection = {"option": None}
 
