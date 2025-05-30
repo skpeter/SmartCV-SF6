@@ -18,6 +18,7 @@ import mss
 import pygetwindow as gw
 import traceback
 import dialog
+import broadcast
 from datetime import datetime
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -489,23 +490,21 @@ def start_websocket_server():
             handle_connection,
             "localhost",
             config.getint('settings', 'server_port'),
-            ping_interval=60,  # Send ping every 60 seconds
-            ping_timeout=90,   # Wait 90 seconds for pong response
-            close_timeout=15   # Wait 15 seconds for close handshake
+            ping_interval=60,
+            ping_timeout=90,
+            close_timeout=15
         ):
             await asyncio.Future()  # run forever
 
     asyncio.run(start_server())
 
 if __name__ == "__main__":    
-    # Start the detection thread
+    broadcast_thread = threading.Thread(target=broadcast.register_instance, daemon=True).start()
     detection_thread = threading.Thread(target=run_detection, daemon=True).start()
-    
-    # Start the websocket server thread
     websocket_thread = threading.Thread(target=start_websocket_server, daemon=True).start()
 
-    print("All systems go. Please head to the character selection screen to start detection.")
+    time.sleep(1)
+    print("All systems go. Please head to the character selection screen to start detection.\n")
 
-    # Keep the main thread alive
     while True:
         time.sleep(1)

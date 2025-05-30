@@ -146,3 +146,6 @@ def choose_player_side(player1: str, player2: str):
 
     root.mainloop()
     return chosen_player["name"]
+
+if __name__ == "__main__": # for testing only
+    choose_player_side("Juliana", "Andromeda")

@@ -6,3 +6,4 @@ numpy
 websockets
 easyocr
 pygame
+zeroconf
