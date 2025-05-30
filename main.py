@@ -488,7 +488,7 @@ def start_websocket_server():
     async def start_server():
         async with websockets.serve(
             handle_connection,
-            "localhost",
+            "0.0.0.0",
             config.getint('settings', 'server_port'),
             ping_interval=60,
             ping_timeout=90,
