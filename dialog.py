@@ -1,7 +1,11 @@
 import tkinter as tk
 import threading, time
 import pygame
+import pygetwindow as gw
 import tkinter.font as tkFont
+import configparser
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 def on_focus_in(event):
     current_font = tkFont.Font(font=event.widget.cget("font"))
@@ -12,6 +16,25 @@ def on_focus_out(event):
     current_font = tkFont.Font(font=event.widget.cget("font"))
     current_font.configure(weight="normal")
     event.widget.config(font=current_font)
+
+def focus_game_window():
+    windows = gw.getWindowsWithTitle(config.get('settings', 'executable_title'))
+    if windows: # Check if the list is not empty
+        window = windows[0]
+        window.minimize()
+        window.restore()
+    else:
+        pass
+
+def unfocus_game(delay=500):
+    temp = tk.Tk()
+    temp.overrideredirect(True)      # No window decorations
+    temp.attributes("-alpha", 1)  # Almost invisible
+    temp.geometry("1x1+50+50")         # Tiny size, top-left corner
+    temp.lift()
+    temp.attributes("-topmost", True)
+    temp.after(delay, temp.destroy)  # Destroy after a short delay
+    temp.mainloop()
 
 def choose_player_side(player1: str, player2: str):
     pygame.init()
@@ -25,6 +48,8 @@ def choose_player_side(player1: str, player2: str):
         chosen_player["name"] = name
         fade_out()
 
+    unfocus_game()
+    time.sleep(1)
     root = tk.Tk()
     root.configure(bg="dark gray")
     root.overrideredirect(True)  # removes the title bar and close button
@@ -38,12 +63,17 @@ def choose_player_side(player1: str, player2: str):
         root.attributes("-alpha", alpha)
         if alpha < 1.0:
             root.after(25, fade_in, alpha)
+        else:
+            root.focus_force()  # Force focus to this window
+            button1.focus_set()
     fade_in()
 
     def fade_out(alpha=1.0):
         alpha -= 0.05
         if alpha <= 0:
             root.destroy()
+            time.sleep(0)
+            focus_game_window()
         else:
             root.attributes("-alpha", alpha)
             root.after(10, fade_out, alpha)
@@ -95,11 +125,6 @@ def choose_player_side(player1: str, player2: str):
     button2.config(command=lambda: handle_selection(player2))
     button1.bind("<FocusIn>", clear_confirmation, add="+")
     button2.bind("<FocusIn>", clear_confirmation, add="+")
-
-    # Set initial focus to button1
-    button1.focus_set()
-
-    
 
     button1.bind("<FocusIn>", on_focus_in)
     button1.bind("<FocusOut>", on_focus_out)
