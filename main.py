@@ -499,7 +499,7 @@ def start_websocket_server():
     asyncio.run(start_server())
 
 if __name__ == "__main__":    
-    broadcast_thread = threading.Thread(target=broadcast.register_instance, daemon=True).start()
+    broadcast_thread = threading.Thread(target=broadcast.broadcast_device_info, daemon=True).start()
     detection_thread = threading.Thread(target=run_detection, daemon=True).start()
     websocket_thread = threading.Thread(target=start_websocket_server, daemon=True).start()
 

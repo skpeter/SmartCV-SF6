@@ -1,36 +1,34 @@
-from zeroconf import Zeroconf, ServiceInfo
+import asyncio
 import socket
 import time
 
-def register_instance():
-    zeroconf = Zeroconf()
+BROADCAST_PORT = 6500
+BROADCAST_INTERVAL = 1  # seconds
+
+def broadcast_device_info():
     hostname = socket.gethostname()
     ip = socket.gethostbyname(hostname)
+    message = f"{hostname} ({ip})".encode("utf-8")
 
-    service_type = "_smartcv._tcp.local."
-    service_name = f"{hostname}.{service_type}"
-    service_port = 6500 # do not change this
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.bind(('', 0))
 
-    info = ServiceInfo(
-        type_=service_type,
-        name=service_name,
-        addresses=[socket.inet_aton(ip)],
-        port=service_port,
-        properties={"device": hostname},
-        server=f"{hostname}.local.",
-    )
-
-    print(f"Registering SmartCV instance {service_name} at {ip}:{service_port}")
-    zeroconf.register_service(info)
 
     try:
         while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
+            sock.sendto(message, ("192.168.1.255", BROADCAST_PORT))
+            time.sleep(BROADCAST_INTERVAL)
+    except asyncio.CancelledError:
+        print("Broadcast cancelled.")
     finally:
-        zeroconf.unregister_service(info)
-        zeroconf.close()
+        sock.close()
 
-if __name__ == "__main__": #for testing only
-    register_instance()
+def broadcaster_thread():
+    try:
+        asyncio.run(broadcast_device_info())
+    except Exception as e:
+        print(f"Broadcast thread error: {e}")
+
+if __name__ == "__main__":
+    asyncio.run(broadcast_device_info())
