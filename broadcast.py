@@ -8,7 +8,7 @@ BROADCAST_INTERVAL = 1  # seconds
 def broadcast_device_info():
     hostname = socket.gethostname()
     ip = socket.gethostbyname(hostname)
-    message = f"{hostname} ({ip})".encode("utf-8")
+    message = f"smartcv-ggst:{hostname}:{ip}".encode("utf-8")
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
