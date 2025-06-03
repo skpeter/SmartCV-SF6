@@ -1,0 +1,3 @@
+[submodule "smartcv-core"]
+    path = smartcv-core
+	url = https://github.com/skpeter/smartcv-core.git
