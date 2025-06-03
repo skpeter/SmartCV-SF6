@@ -39,7 +39,7 @@ def get_state():
     with payload_lock:
         return payload['state']
 
-def detect_character_select_screen(payload, lock):
+def detect_character_select_screen(payload):
     
     img, scale_x, scale_y = core.capture_screen()
     if not img: return
@@ -73,7 +73,7 @@ def detect_character_select_screen(payload, lock):
                     player['name'] = None
     return
 
-def detect_characters(payload, lock):
+def detect_characters(payload):
     img, scale_x, scale_y = core.capture_screen()
     if not img: return
     time.sleep(core.refresh_rate)
@@ -96,7 +96,7 @@ def detect_characters(payload, lock):
     time.sleep(core.refresh_rate)
     return
 
-def detect_versus_screen(payload, lock):
+def detect_versus_screen(payload):
     img, scale_x, scale_y = core.capture_screen()
     if not img: return
     pixel1 = img.getpixel((int(1050 * scale_x), int(185 * scale_y))) #black letterbox
@@ -116,7 +116,7 @@ def detect_versus_screen(payload, lock):
                 detect_characters()
     return
 
-def detect_player_tags(payload, lock):
+def detect_player_tags(payload):
     time.sleep(core.refresh_rate)
     if payload['players'][0]['name'] != None and payload['players'][1]['name'] != None: return
     img, scale_x, scale_y = core.capture_screen()
@@ -135,7 +135,7 @@ def detect_player_tags(payload, lock):
                 player['name'] = False
         return
 
-def detect_round_start(payload, lock):
+def detect_round_start(payload):
     img, scale_x, scale_y = core.capture_screen()
     if not img: return
     box = (int(960 * scale_x), int(475 * scale_y), int((960 + 10) * scale_x), int((475 + 180) * scale_y))
@@ -150,7 +150,7 @@ def detect_round_start(payload, lock):
                 previous_states.append(payload['state'])
                 
 
-def detect_rounds(payload, lock):
+def detect_rounds(payload):
     if payload['players'][0]['rounds'] < 2 and payload['players'][1]['rounds'] < 2: return
         
     img, scale_x, scale_y = core.capture_screen()
@@ -209,7 +209,7 @@ def determine_winner(payload, lock, img, scale_x, scale_y, perfect=False):
     return False
 
 
-def detect_game_end(payload, lock):
+def detect_game_end(payload):
     """
     Possibly will be deprecated soon. Only use to switch scenes.
     """
@@ -241,7 +241,7 @@ def detect_game_end(payload, lock):
             time.sleep(core.refresh_rate)
     return
 
-def detect_result_screen(payload, lock):
+def detect_result_screen(payload):
     if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0: return
     img, scale_x, scale_y = core.capture_screen()
     if not img: return
