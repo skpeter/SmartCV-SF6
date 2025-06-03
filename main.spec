@@ -7,18 +7,6 @@ a = Analysis(
     pathex=['.', './smartcv_core'],
     binaries=[],
     hiddenimports=[
-        'configparser',
-        'PIL.Image',
-        'PIL.ImageFile',
-        'cv2',
-        'numpy',
-        'threading',
-        'time',
-        'gc',
-        'json',
-        'websockets',
-        'asyncio',
-        'easyocr'
         'torch, torchvision, torchaudio'
     ],
     hookspath=[],
