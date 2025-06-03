@@ -138,28 +138,17 @@ def detect_player_tags(payload, lock):
 def detect_round_start(payload, lock):
     img, scale_x, scale_y = core.capture_screen()
     if not img: return
-
     box = (int(960 * scale_x), int(475 * scale_y), int((960 + 10) * scale_x), int((475 + 180) * scale_y))
-    cropped_area = img.crop(box)
-    target_red = (190, 0, 0)
-    deviation = 0.15
-    width, height = cropped_area.size
-    total_pixels = width * height
-    red_pixels = 0
 
-    for i in range(width):
-        for j in range(height):
-            if core.is_within_deviation(cropped_area.getpixel((i, j)), target_red, deviation):
-                red_pixels += 1
     with lock:
-        if red_pixels / total_pixels >= 0.9:
+        if core.get_color_match_in_region(img, box, (190, 0, 0), 0.15) >= 0.9:
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Game starting")
             for player in payload['players']:
                 player['rounds'] = 2
             payload['state'] = "in_game"
             if payload['state'] != previous_states[-1]:
                 previous_states.append(payload['state'])
-
+                
 
 def detect_rounds(payload, lock):
     if payload['players'][0]['rounds'] < 2 and payload['players'][1]['rounds'] < 2: return
