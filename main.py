@@ -11,7 +11,7 @@ import gc
 import json
 import websockets
 import asyncio
-import ggst
+import sf6
 import re
 from tag_matching import findBestMatch
 import mss
@@ -176,7 +176,7 @@ def detect_characters():
     character1 = read_text(img, region1)
     character2 = read_text(img, region2)
     if character1 is not None and character2 is not None:
-        c1, c2 = findBestMatch(character1, ggst.characters), findBestMatch(character2, ggst.characters)
+        c1, c2 = findBestMatch(character1, sf6.characters), findBestMatch(character2, sf6.characters)
     else: return detect_characters()
     payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
     print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 character:", c1)

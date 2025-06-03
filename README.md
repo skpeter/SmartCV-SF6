@@ -1,20 +1,20 @@
-# SmartCV-GGST
+# SmartCV-SF6
 
 https://github.com/user-attachments/assets/f1c46930-3639-43b1-b6b0-a7d512f58d5a
 
-SmartCV-GGST is a tool designed to provide data on Guilty Gear -STRIVE- without the need for installing mods on your game, or the need for a powerful PC to read game data in real time. 
+SmartCV-SF6 is a tool designed to provide data on Street Fighter 6 without the need for installing mods on your game, or the need for a powerful PC to read game data in real time. 
 
 It's a project that uses pixel detection to recognize certain situations in the game to take the opportunity to read data from using OCR. Due to this, it's able to gather enough data to report the results on a match (some assumptions given). Look for the **How does it work?** section to get a more in-depth explanation.
 
 ## Requirements
 - [OBS (optional if streaming)](https://obsproject.com/download)
 - [Advanced Scene Switcher OBS Plugin (optional if streaming)](https://github.com/WarmUpTill/SceneSwitcher/releases)
-- Your copy of Guilty Gear -STRIVE- must be in **English**. Support for other languages is being looked into.
+- Your copy of Street Fighter 6 must be in **English**. Support for other languages is being looked into.
 - You must disable all mods that change the UI or in-game text in any way.
 
 ## Installation
 ### Step 1.1: Installing the CPU version
-- Installing the CPU version is very easy. Just download the compiled release.zip [here](https://github.com/skpeter/smartcv-ggst/releases).
+- Installing the CPU version is very easy. Just download the compiled release.zip [here](https://github.com/skpeter/smartcv-sf6/releases).
 - You can skip to step 2 from here.
 ### Step 1.2: Installing the GPU version
 - You will need to download the **source code** zip [here](https://github.com/skpeter/smartcv/releases).
@@ -31,7 +31,7 @@ SmartCV will read from a separate feed from OBS that will be provided to it. Thi
 - On the window that opens, go to the Macros tab and click on the plus sign to add a new macro (you can name it anything you want). Click on the other plus signs to add a condition and an action to this macro. I've attached a screenshot so you can mimic the settings:
 
 ![Advanced Scene Switcher Setup](img/guide2.jpg)
-- - "GGST" should be OBS source for your capture card.
+- - "SF6" should be OBS source for your capture card.
 - - You can set the path to save the screenshot anywhere you'd like (SmartCV must have access to it), but it is **highly recommended** that you save the screenshot as a **WEBP**. This image format causes the least amount of issues and is very lightweight, however if for some reason you can't use WEBPs, you can save it as a JPG instead. 
 - Go to SmartCV's `config.ini` file, set the `capture_mode` setting to `obs` and set the `feed_path` setting to the path where OBS is saving the screenshots.
 
