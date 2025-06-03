@@ -3,8 +3,8 @@
 block_cipher = None
 
 a = Analysis(
-    ['main.py'],
-    pathex=['.'],
+    ['smartcv_core/core.py'],
+    pathex=['.', './smartcv_core'],
     binaries=[],
     hiddenimports=[
         'configparser',
