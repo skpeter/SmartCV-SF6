@@ -1,3 +1,3 @@
 @echo off
-python ./core/core.py
+python ./smartcv_core/core.py
 pause
