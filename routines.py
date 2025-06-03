@@ -1,6 +1,4 @@
 import configparser
-from PIL import Image, ImageFile
-ImageFile.LOAD_TRUNCATED_IMAGES=True
 import cv2
 import numpy as np
 import threading
@@ -12,7 +10,6 @@ import smartcv_core.core as core
 from smartcv_core.matching import findBestMatch
 from datetime import datetime
 client_name = "smartcv-sf6"
-payload_lock = threading.Lock()
 config = configparser.ConfigParser()
 config.read('config.ini')
 previous_states = [None] # list of previous states to be used for state change detection
@@ -35,10 +32,6 @@ payload = {
     ]
 }
 
-def get_state():
-    with payload_lock:
-        return payload['state']
-
 def detect_character_select_screen(payload):
     
     img, scale_x, scale_y = core.capture_screen()
@@ -60,17 +53,16 @@ def detect_character_select_screen(payload):
         core.is_within_deviation(pixel, target_color3, deviation),
         core.is_within_deviation(pixel2, target_color4, deviation)
     ]
-    with lock:
-        if sum(conditions) == 2:
-            payload['state'] = "character_select"
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Character select screen detected")
-            if payload['state'] != previous_states[-1]:
-                previous_states.append(payload['state'])
-                #clean up some more player information
-                for player in payload['players']:
-                    player['rounds'] = 2
-                    player['character'] = None
-                    player['name'] = None
+    if sum(conditions) == 2:
+        payload['state'] = "character_select"
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Character select screen detected")
+        if payload['state'] != previous_states[-1]:
+            previous_states.append(payload['state'])
+            #clean up some more player information
+            for player in payload['players']:
+                player['rounds'] = 2
+                player['character'] = None
+                player['name'] = None
     return
 
 def detect_characters(payload):
@@ -85,11 +77,10 @@ def detect_characters(payload):
     region2 = (int(215 * scale_x), int(600 * scale_y), int(565 * scale_x), int(100 * scale_y))
     character1 = core.read_text(img, region1)
     character2 = core.read_text(img, region2)
-    with lock:
-        if character1 is not None and character2 is not None:
-            c1, c2 = findBestMatch(character1, sf6.characters), findBestMatch(character2, sf6.characters)
-        else: return detect_characters()
-        payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
+    if character1 is not None and character2 is not None:
+        c1, c2 = findBestMatch(character1, sf6.characters), findBestMatch(character2, sf6.characters)
+    else: return detect_characters()
+    payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
     print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 character:", c1)
     print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 character:", c2)
 
@@ -107,13 +98,12 @@ def detect_versus_screen(payload):
     target_color2 = (64, 132, 207)  #blue sky
     deviation = 0.1
     
-    with lock:
-        if core.is_within_deviation(pixel1, target_color, deviation) and core.is_within_deviation(pixel2, target_color2, deviation):
-            payload['state'] = "loading"
-            if payload['state'] != previous_states[-1]:
-                previous_states.append(payload['state'])
-                print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Match is now loading...")
-                detect_characters()
+    if core.is_within_deviation(pixel1, target_color, deviation) and core.is_within_deviation(pixel2, target_color2, deviation):
+        payload['state'] = "loading"
+        if payload['state'] != previous_states[-1]:
+            previous_states.append(payload['state'])
+            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Match is now loading...")
+            detect_characters()
     return
 
 def detect_player_tags(payload):
@@ -125,29 +115,27 @@ def detect_player_tags(payload):
     tag1 = core.read_text(img, (int(575 * scale_x), int(35 * scale_y), int(770 * scale_x), int(115 * scale_y)))
     tag2 = core.read_text(img, (int(575 * scale_x), int(880 * scale_y), int(770 * scale_x), int(115 * scale_y)))
     
-    with lock:
-        if tag1 is not None and tag2 is not None:
-            payload['players'][0]['name'], payload['players'][1]['name'] = tag1.strip(), tag2.strip()
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 tag:", payload['players'][0]['name'])
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 tag:", payload['players'][1]['name'])
-        else:
-            for player in payload['players']:
-                player['name'] = False
-        return
+    if tag1 is not None and tag2 is not None:
+        payload['players'][0]['name'], payload['players'][1]['name'] = tag1.strip(), tag2.strip()
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 tag:", payload['players'][0]['name'])
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 tag:", payload['players'][1]['name'])
+    else:
+        for player in payload['players']:
+            player['name'] = False
+    return
 
 def detect_round_start(payload):
     img, scale_x, scale_y = core.capture_screen()
     if not img: return
     box = (int(960 * scale_x), int(475 * scale_y), int((960 + 10) * scale_x), int((475 + 180) * scale_y))
 
-    with lock:
-        if core.get_color_match_in_region(img, box, (190, 0, 0), 0.15) >= 0.9:
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Game starting")
-            for player in payload['players']:
-                player['rounds'] = 2
-            payload['state'] = "in_game"
-            if payload['state'] != previous_states[-1]:
-                previous_states.append(payload['state'])
+    if core.get_color_match_in_region(img, box, (190, 0, 0), 0.15) >= 0.9:
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Game starting")
+        for player in payload['players']:
+            player['rounds'] = 2
+        payload['state'] = "in_game"
+        if payload['state'] != previous_states[-1]:
+            previous_states.append(payload['state'])
                 
 
 def detect_rounds(payload):
@@ -166,23 +154,22 @@ def detect_rounds(payload):
     target_color2 = (150, 156, 163)  #gray heart (lost round)
     deviation = 0.15
 
-    with lock:
-        if core.is_within_deviation(pixel1, target_color, deviation):
-            if payload['players'][0]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
-            payload['players'][0]['rounds'] = 2
-        if core.is_within_deviation(pixel2, target_color, deviation):
-            if payload['players'][1]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
-            payload['players'][1]['rounds'] = 2
-        if core.is_within_deviation(pixel1, target_color2, deviation):
-            if payload['players'][0]['rounds'] != 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 lost a round")
-            payload['players'][0]['rounds'] = 1
-            return
-        if core.is_within_deviation(pixel2, target_color2, deviation):
-            if payload['players'][1]['rounds'] != 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 lost a round")
-            payload['players'][1]['rounds'] = 1
+    if core.is_within_deviation(pixel1, target_color, deviation):
+        if payload['players'][0]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
+        payload['players'][0]['rounds'] = 2
+    if core.is_within_deviation(pixel2, target_color, deviation):
+        if payload['players'][1]['rounds'] == 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Correcting previous round loss report")
+        payload['players'][1]['rounds'] = 2
+    if core.is_within_deviation(pixel1, target_color2, deviation):
+        if payload['players'][0]['rounds'] != 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 1 lost a round")
+        payload['players'][0]['rounds'] = 1
+        return
+    if core.is_within_deviation(pixel2, target_color2, deviation):
+        if payload['players'][1]['rounds'] != 1: print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Player 2 lost a round")
+        payload['players'][1]['rounds'] = 1
     return
 
-def determine_winner(payload, lock, img, scale_x, scale_y, perfect=False):
+def determine_winner(payload, img, scale_x, scale_y, perfect=False):
     # Define the area to read
     x, y, w, h = (int(1600 * scale_x), int(135 * scale_y), int(290 * scale_x), int(570 * scale_y))
     if perfect: x, y, w, h = (int(90 * scale_x), int(180 * scale_y), int(355 * scale_x), int(160 * scale_y))
@@ -227,18 +214,17 @@ def detect_game_end(payload):
     deviation = 0.2
     
     perfect = None
-    with lock:
-        if core.is_within_deviation(pixel1, target_color, deviation) and core.is_within_deviation(pixel2, target_color, deviation):
-            perfect = False
-        if core.is_within_deviation(pixelperfect1, target_color2, deviation) and core.is_within_deviation(pixelperfect2, target_color, deviation):
-            perfect = True
-        if perfect is not None:
-            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Perfect!" if perfect else "- Slash!")
-            if determine_winner(payload, lock, img, scale_x, scale_y, perfect):
-                payload['state'] = "game_end"
-                if payload['state'] != previous_states[-1]:
-                    previous_states.append(payload['state'])
-            time.sleep(core.refresh_rate)
+    if core.is_within_deviation(pixel1, target_color, deviation) and core.is_within_deviation(pixel2, target_color, deviation):
+        perfect = False
+    if core.is_within_deviation(pixelperfect1, target_color2, deviation) and core.is_within_deviation(pixelperfect2, target_color, deviation):
+        perfect = True
+    if perfect is not None:
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "- Perfect!" if perfect else "- Slash!")
+        if determine_winner(payload, img, scale_x, scale_y, perfect):
+            payload['state'] = "game_end"
+            if payload['state'] != previous_states[-1]:
+                previous_states.append(payload['state'])
+        time.sleep(core.refresh_rate)
     return
 
 def detect_result_screen(payload):
@@ -253,35 +239,34 @@ def detect_result_screen(payload):
     deviation = 0.2
     if config.getboolean('settings', 'debug_mode', fallback=False):
         print("Detected result screen pixels - player 1:", pixel, "player 2:", pixel2)
-    with lock:
+    if ((core.is_within_deviation(pixel, target_color, deviation) and core.is_within_deviation(pixel2, target_color2, deviation))):
+        if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0: return
+        pixel = img.getpixel((int(450 * scale_x), int(730 * scale_y))) # win box for player 1
+        pixel2 = img.getpixel((int(1735 * scale_x), int(730 * scale_y))) # lose box for player 2
+        target_color = (190, 0, 0)  # red
+        target_color2 = (0, 80, 144) # blue
         if ((core.is_within_deviation(pixel, target_color, deviation) and core.is_within_deviation(pixel2, target_color2, deviation))):
-            if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0: return
-            pixel = img.getpixel((int(450 * scale_x), int(730 * scale_y))) # win box for player 1
-            pixel2 = img.getpixel((int(1735 * scale_x), int(730 * scale_y))) # lose box for player 2
-            target_color = (190, 0, 0)  # red
-            target_color2 = (0, 80, 144) # blue
-            if ((core.is_within_deviation(pixel, target_color, deviation) and core.is_within_deviation(pixel2, target_color2, deviation))):
+            payload['players'][1]['rounds'] = 0
+            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
+        pixel = img.getpixel((int(555 * scale_x), int(730 * scale_y))) # lose box for player 1
+        pixel2 = img.getpixel((int(1630 * scale_x), int(730 * scale_y))) # win box for player 2
+        if ((core.is_within_deviation(pixel, target_color2, deviation) and core.is_within_deviation(pixel2, target_color, deviation))):
+            payload['players'][0]['rounds'] = 0
+            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
+        else: 
+            pixel = img.getpixel((int(1700 * scale_x), int(730 * scale_y))) # win box for online player
+            pixel2 = img.getpixel((int(1815 * scale_x), int(730 * scale_y))) # lose box for online player
+            if (core.is_within_deviation(pixel, target_color, deviation)):
                 payload['players'][1]['rounds'] = 0
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
-            pixel = img.getpixel((int(555 * scale_x), int(730 * scale_y))) # lose box for player 1
-            pixel2 = img.getpixel((int(1630 * scale_x), int(730 * scale_y))) # win box for player 2
-            if ((core.is_within_deviation(pixel, target_color2, deviation) and core.is_within_deviation(pixel2, target_color, deviation))):
+            elif (core.is_within_deviation(pixel2, target_color2, deviation)):
                 payload['players'][0]['rounds'] = 0
                 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
-            else: 
-                pixel = img.getpixel((int(1700 * scale_x), int(730 * scale_y))) # win box for online player
-                pixel2 = img.getpixel((int(1815 * scale_x), int(730 * scale_y))) # lose box for online player
-                if (core.is_within_deviation(pixel, target_color, deviation)):
-                    payload['players'][1]['rounds'] = 0
-                    print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][0]['character']} wins!")
-                elif (core.is_within_deviation(pixel2, target_color2, deviation)):
-                    payload['players'][0]['rounds'] = 0
-                    print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), f"- {payload['players'][1]['character']} wins!")
-            if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0:
-                payload['state'] = "game_end"
-                if payload['state'] != previous_states[-1]:
-                    previous_states.append(payload['state'])
-            time.sleep(core.refresh_rate)
+        if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0:
+            payload['state'] = "game_end"
+            if payload['state'] != previous_states[-1]:
+                previous_states.append(payload['state'])
+        time.sleep(core.refresh_rate)
 
 states_to_functions = {
     None: [detect_character_select_screen, detect_versus_screen],
