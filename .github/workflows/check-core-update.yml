@@ -22,6 +22,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add smartcv_core
-          git commit -m "Bump up smartcv_core" || echo "No changes"
+          git add core
+          git commit -m "Bump up core" || echo "No changes"
           git push || echo "No push needed"

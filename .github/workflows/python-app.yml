@@ -30,7 +30,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller flake8
-        pip install -r smartcv_core\requirements.txt
+        pip install -r core\requirements.txt
 
     - name: Lint with flake8
       run: |
@@ -40,11 +40,11 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Build with PyInstaller
-      run: pyinstaller smartcv_core\main.spec --clean --noconfirm
+      run: pyinstaller core\main.spec --clean --noconfirm
 
     - name: Copy config file and images
       run: |
-        copy smartcv_core\config.ini.example dist\smartcv\config.ini
+        copy core\config.ini.example dist\smartcv\config.ini
         mkdir dist\smartcv\img
     - name: Create zip file
       run: |

@@ -6,15 +6,13 @@ import time
 import easyocr
 import sf6
 import re
-import smartcv_core.core as core
-from smartcv_core.matching import findBestMatch
+import core.core as core
+from core.matching import findBestMatch
 from datetime import datetime
 client_name = "smartcv-sf6"
 config = configparser.ConfigParser()
 config.read('config.ini')
 previous_states = [None] # list of previous states to be used for state change detection
-reader = easyocr.Reader(['en'])
-
 
 payload = {
     "state": None,
@@ -174,16 +172,6 @@ def determine_winner(payload, img, scale_x, scale_y, perfect=False):
     x, y, w, h = (int(1600 * scale_x), int(135 * scale_y), int(290 * scale_x), int(570 * scale_y))
     if perfect: x, y, w, h = (int(90 * scale_x), int(180 * scale_y), int(355 * scale_x), int(160 * scale_y))
 
-    # crop image to the area of interest
-    img = img.crop((x, y, x + w, y + h))
-    # the text showing the winner is in the corner of the screen rotated by 70 degrees
-    img = img.rotate(70 if not perfect else 344, expand=True)
-    # Convert image from PIL to cv2
-    img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
-    # The text is too transparent, so we need to increase the contrast of the image
-    img = cv2.convertScaleAbs(img, alpha=2, beta=0)
-    # Use OCR to read the text from the image
-    result = reader.readtext(img, paragraph=False, allowlist='12', text_threshold=0.3, low_text=0.2)
 
     # strip all non-numeric characters from the result
     if result:
