@@ -52,7 +52,6 @@ As of this writing, only [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide
 
 ## Known Issues
 
-- No support for getting data by spectating online matches, only works for local play at the moment.
 
 ## How does it work?
 

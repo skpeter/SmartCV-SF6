@@ -25,5 +25,9 @@ characters = [
   "Terry",
   "Random",
   "Mai",
-  "Elena"
+  "Elena",
+  "Alex",
+  "C.Viper",
+  "Sagat",
+  "Ingrid"
 ]
