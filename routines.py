@@ -61,7 +61,6 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
         stitched = core.stitch_text_regions(cropped, int(80 * scale_y), (255,255,255), margin=30, deviation=0.4) 
         cropped = stitched.copy()
         characters = core.read_text(cropped, contrast=2)
-        if characters: characters = characters.replace(' li', '-li').split('|')
     except:
         pass
     if 'stitched' not in locals() or len(stitched) != 2:
@@ -73,7 +72,6 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
         x,y,w,h = (int(105 * scale_x), int(820 * scale_y), int(1713 * scale_x), int(127 * scale_y))
         cropped = img[int(y):int(y+h), int(x):int(x+w)]
         characters = core.read_text(cropped, contrast=2)
-        if characters: characters = characters.replace(' li', '-li').split('|')
         if characters and len(characters) >= 4:
             c1, _ = findBestMatch(characters[0], sf6.characters)
             c2, _ = findBestMatch(characters[1], sf6.characters)
@@ -162,7 +160,6 @@ def detect_results(payload:dict, img, scale_x:float, scale_y:float):
     
     if result: 
         print("- Result text detected - validating results", result)
-        result = result.split(' ')
         if len(result) >= 2:
             if findBestMatch(result[0], ["WIN", "LOSE"]) == "WIN" and payload['players'][0]['rounds'] == 0:
                 payload['players'][0]['rounds'] = 1
