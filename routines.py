@@ -1,10 +1,10 @@
 import configparser
 import time
-import threading
 import sf6
 import numpy as np
 import core.core as core
 from core.matching import findBestMatch
+from PIL import ImageEnhance
 client_name = "smartcv-sf6"
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -81,7 +81,6 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
         cropped = img[int(y):int(y+h), int(x):int(x+w)]
         characters = core.read_text(cropped)
         if characters: characters = characters.lower().replace('chun li', 'chun-li').split(' ')
-        print(characters, len(characters))
         if characters and len(characters) == 4:
             c1, _ = findBestMatch(characters[0], sf6.characters)
             c2, _ = findBestMatch(characters[1], sf6.characters)
@@ -131,8 +130,10 @@ def detect_round_start(payload:dict, img, scale_x:float, scale_y:float):
 def detect_health_bars(payload:dict, img, scale_x:float, scale_y:float, detect_ko=False):
     if not detect_ko and (payload['players'][0]['health'] == 0 or payload['players'][1]['health'] == 0): return
     img = img.convert("L")
-    healthbar1 = core.get_color_match_in_region(img, (int(168 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.4)
-    healthbar2 = core.get_color_match_in_region(img, (int(1073 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.4)
+    enhancer = ImageEnhance.Contrast(img)
+    img = enhancer.enhance(2.0)  # adjust the factor as needed
+    healthbar1 = core.get_color_match_in_region(img, (int(168 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.2)
+    healthbar2 = core.get_color_match_in_region(img, (int(1073 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.2)
     payload['players'][0]['health'] = int(healthbar1 * 100)
     payload['players'][1]['health'] = int(healthbar2 * 100)
 
