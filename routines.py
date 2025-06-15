@@ -122,8 +122,8 @@ def detect_health_bars(payload:dict, img, scale_x:float, scale_y:float, detect_k
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(3.0)  # adjust the factor as needed
     img.save('temp.png')
-    healthbar1 = core.get_color_match_in_region(img, (int(166 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (210, 210, 210), 0.2)
-    healthbar2 = core.get_color_match_in_region(img, (int(1071 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (210, 210, 210), 0.2)
+    healthbar1 = core.get_color_match_in_region(img, (int(167 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.2)
+    healthbar2 = core.get_color_match_in_region(img, (int(1071 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.2)
     payload['players'][0]['health'] = int(healthbar1 * 100)
     payload['players'][1]['health'] = int(healthbar2 * 100)
 
