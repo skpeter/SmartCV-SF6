@@ -47,12 +47,6 @@ def detect_character_select_screen(payload:dict, img, scale_x:float, scale_y:flo
         core.print_with_time("- Character select screen detected")
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
-            #clean up some more player information
-            for player in payload['players']:
-                player['rounds'] = 2
-                player['character'] = None
-                player['name'] = None
-                player['round'] = 1
     return
 
 def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
@@ -67,11 +61,11 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
     try:
         stitched = core.stitch_text_regions(cropped, int(80 * scale_y), (255,255,255), margin=30, deviation=0.4) 
         cropped = stitched.copy()
-        characters = core.read_text(cropped)
+        characters = core.read_text(cropped, contrast=2)
         if characters: characters = characters.lower().replace('chun li', 'chun-li').split(' ')
     except:
         pass
-    if 'stitched' not in locals() or len(stitched) < 2:
+    if 'stitched' not in locals() or len(stitched) != 2:
         core.print_with_time("- Could not read characters. This is probably an online match...")
     if characters and len(characters) == 2:
         c1, _ = findBestMatch(characters[0], sf6.characters)
@@ -79,7 +73,7 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
     else: 
         x,y,w,h = (int(105 * scale_x), int(820 * scale_y), int(1713 * scale_x), int(127 * scale_y))
         cropped = img[int(y):int(y+h), int(x):int(x+w)]
-        characters = core.read_text(cropped)
+        characters = core.read_text(cropped, contrast=2)
         if characters: characters = characters.lower().replace('chun li', 'chun-li').split(' ')
         if characters and len(characters) == 4:
             c1, _ = findBestMatch(characters[0], sf6.characters)
@@ -93,23 +87,18 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
 
 def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):
     
-    # pixel = img.getpixel((int(290 * scale_x), int(1025 * scale_y)))
-    # pixel2 = img.getpixel((int(1400 * scale_x), int(1025 * scale_y)))
-    pixel = img.getpixel((int(1017 * scale_x), int(400 * scale_y)))
-    pixel2 = img.getpixel((int(891 * scale_x), int(400 * scale_y)))
-    
-    target_color = (172, 5, 248)  #purple
-    deviation = 0.15
-    
-    if config.getboolean('settings', 'debug_mode', fallback=False):
-        print("Versus screen pixels - player 1:", pixel, "player 2:", pixel2)
-    
-    if (core.is_within_deviation(pixel, target_color, deviation)
-    and core.is_within_deviation(pixel2, target_color, deviation)):
+    box = (int(928 * scale_x), int(50 * scale_y), int(26 * scale_x), int(187 * scale_y))
+    if core.get_color_match_in_region(img, box, (34, 7, 9), 0.1) >= 0.9:
         payload['state'] = "loading"
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
             core.print_with_time("- Match is now loading...")
+            payload['round'] = 1
+            for player in payload['players']:
+                player['health'] = 99
+                player['rounds'] = 2
+                player['character'] = None
+                player['name'] = None
             detect_characters(payload, img, scale_x, scale_y)
     return
 
@@ -131,9 +120,10 @@ def detect_health_bars(payload:dict, img, scale_x:float, scale_y:float, detect_k
     if not detect_ko and (payload['players'][0]['health'] == 0 or payload['players'][1]['health'] == 0): return
     img = img.convert("L")
     enhancer = ImageEnhance.Contrast(img)
-    img = enhancer.enhance(2.0)  # adjust the factor as needed
-    healthbar1 = core.get_color_match_in_region(img, (int(168 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.2)
-    healthbar2 = core.get_color_match_in_region(img, (int(1073 * scale_x), int(63 * scale_y), int(680 * scale_x), 1), (210, 210, 210), 0.2)
+    img = enhancer.enhance(3.0)  # adjust the factor as needed
+    img.save('temp.png')
+    healthbar1 = core.get_color_match_in_region(img, (int(166 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (210, 210, 210), 0.2)
+    healthbar2 = core.get_color_match_in_region(img, (int(1071 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (210, 210, 210), 0.2)
     payload['players'][0]['health'] = int(healthbar1 * 100)
     payload['players'][1]['health'] = int(healthbar2 * 100)
 
@@ -151,7 +141,7 @@ def detect_health_bars(payload:dict, img, scale_x:float, scale_y:float, detect_k
                 print(f"by {payload['players'][0]['character']}")
             else:
                 time.sleep(0.5)
-                return detect_health_bars(payload, img, scale_x, scale_y, detect_ko=True)
+                return # detect_health_bars(payload, img, scale_x, scale_y, detect_ko=True)
             payload['round'] += 1
             if payload['players'][0]['rounds'] == 0 or payload['players'][1]['rounds'] == 0:
                 core.print_with_time(f"{payload['players'][0]['character'] if payload['players'][0]['rounds'] > 0 else payload['players'][1]['character']} wins!")
