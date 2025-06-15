@@ -100,7 +100,7 @@ def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):
     pixel2 = img.getpixel((int(891 * scale_x), int(400 * scale_y)))
     
     target_color = (172, 5, 248)  #purple
-    deviation = 0.1
+    deviation = 0.15
     
     if config.getboolean('settings', 'debug_mode', fallback=False):
         print("Versus screen pixels - player 1:", pixel, "player 2:", pixel2)
