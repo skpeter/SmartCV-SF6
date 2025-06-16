@@ -52,6 +52,7 @@ As of this writing, only [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide
 
 ## Known Issues
 
+- I don't advise trusting on the HP output per character as it fluctuates heavily throughout the match. This is more so a device to figure out which player got KO'd.
 
 ## How does it work?
 

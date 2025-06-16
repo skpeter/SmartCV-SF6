@@ -65,6 +65,7 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float):
         pass
     if 'stitched' not in locals() or len(stitched) != 2:
         core.print_with_time("- Could not read characters. This is probably an online match...")
+    characters = [ch for ch in characters if "win" not in ch.lower()]
     if characters and len(characters) == 2:
         c1, _ = findBestMatch(characters[0], sf6.characters)
         c2, _ = findBestMatch(characters[1], sf6.characters)
@@ -102,7 +103,7 @@ def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):
 def detect_round_start(payload:dict, img, scale_x:float, scale_y:float):
     box = (int(1347 * scale_x), int(381 * scale_y), int(40 * scale_x), int(40 * scale_y))
 
-    if core.get_color_match_in_region(img, box, (230, 230, 230), 0.1) >= 0.9:
+    if core.get_color_match_in_region(img, box, (235, 235, 235), 0.1) >= 0.9:
         if any(player['rounds'] == 0 for player in payload['players']): payload['round'] = 1
         if payload['players'][0]['health'] > 99 and payload['players'][0]['health'] == 100: return
         core.print_with_time(f"Round {payload['round']} starting")
@@ -121,8 +122,8 @@ def detect_health_bars(payload:dict, img, scale_x:float, scale_y:float):
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(3)  # adjust the factor as needed
     img.save('temp.png')
-    healthbar1 = core.get_color_match_in_region(img, (int(167 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (230, 230, 230), 0.175)
-    healthbar2 = core.get_color_match_in_region(img, (int(1070 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (230, 230, 230), 0.175)
+    healthbar1 = core.get_color_match_in_region(img, (int(167 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (235, 235, 235), 0.12)
+    healthbar2 = core.get_color_match_in_region(img, (int(1070 * scale_x), int(63 * scale_y), int(682 * scale_x), 1), (235, 235, 235), 0.12)
     payload['players'][0]['health'] = int(healthbar1 * 100)
     payload['players'][1]['health'] = int(healthbar2 * 100)
 
@@ -131,7 +132,7 @@ def detect_health_bars(payload:dict, img, scale_x:float, scale_y:float):
     
     if (np.floor(healthbar1 * 100) / 100 == 0) ^ (np.floor(healthbar2 * 100) / 100 == 0):
         ko_passes += 1
-        if ko_passes > 3:
+        if ko_passes > 1:
             core.print_with_time("- K.O.", end=" ")
             if healthbar1 < healthbar2:
                 payload['players'][0]['rounds'] -= 1
