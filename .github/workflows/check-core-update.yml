@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - main
-
+permissions:
+  contents: write
+  
 jobs:
   check-submodule:
     runs-on: ubuntu-latest
