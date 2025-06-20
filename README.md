@@ -12,7 +12,8 @@ It's a project that uses pixel detection to recognize certain situations in the 
 - Your copy of Street Fighter 6 must be in **English**. Support for other languages is being looked into.
 - You must disable all mods that change the UI or in-game text in any way.
 
-## Installation
+## Step 1: Installation
+- Follow either one of the two steps below:
 ### Step 1.1: Installing the CPU version
 - Installing the CPU version is very easy. Just download the compiled release.zip [here](https://github.com/skpeter/smartcv-sf6/releases).
 - You can skip to step 2 from here.
@@ -24,19 +25,14 @@ It's a project that uses pixel detection to recognize certain situations in the 
 ![PyTorch installation page](img/install1.jpg)
 - - Choosing these options will generate a command that you should copy and paste on your terminal/command prompt. PyTorch weighs around 3GB, so take your time.
 
-### Step 2: OBS Setup
-### If you are running the game from the same PC and not receiving game feed from a capture card / console, you can skip this step!
+## Step 2: Setup
+- Follow either one of the two steps below:
+### Step 1.1: Game Setup
+If you are running the game on the same device you are running SmartCV, you pretty much do not need to do anything else. Just open the game alongside SmartCV and it should detect the game's window by itself.
+### Step 2.2: OBS Setup 
+SmartCV reads game data directly from the OBS video source you put it on through OBS Websockets. **Make sure you have OBS Websocket enabled and configured before continuing**. Open your `config.ini` file, find a setting called `source_title`, insert the name of your OBS source, and that's it! Make sure the other OBS settings are correct so SmartCV can connect with OBS. `width` and `height` are the resolution of the image OBS sends. If you want to save up on some CPU usage, you can lower this resolution (as long as it's 16:9 aspect ration), however some things may not behave like normal if you do.
 
-SmartCV will read from a separate feed from OBS that will be provided to it. This is where Advanced Scene Switcher comes in. Once you have it installed, open it on the Tools tab:
-![Advanced Scene Switcher Setup](img/guide1.jpg)
-- On the window that opens, go to the Macros tab and click on the plus sign to add a new macro (you can name it anything you want). Click on the other plus signs to add a condition and an action to this macro. I've attached a screenshot so you can mimic the settings:
-
-![Advanced Scene Switcher Setup](img/guide2.jpg)
-- - "SF6" should be OBS source for your capture card.
-- - You can set the path to save the screenshot anywhere you'd like (SmartCV must have access to it), but it is **highly recommended** that you save the screenshot as a **WEBP**. This image format causes the least amount of issues and is very lightweight, however if for some reason you can't use WEBPs, you can save it as a JPG instead. 
-- Go to SmartCV's `config.ini` file, set the `capture_mode` setting to `obs` and set the `feed_path` setting to the path where OBS is saving the screenshots.
-
-### Step 3: Usage
+## Step 3: Usage
 - To run the GPU version of the app, open the `smartcv.bat` file. To run the CPU version just open `smartcv.exe`.
 **From here all you need to do is follow the on-screen instructions for the game detection to start.**
 **If using OBS, make sure it is open and do not disable the game capture source!**
@@ -51,8 +47,6 @@ SmartCV opens a websocket server (on port 6565 by default) to send data to.
 As of this writing, only [S.M.A.R.T.](https://skpeter.github.io/smart-user-guide) has integrations to it. If you want to integrate SmartCV into your own app, you can look at what the data output looks like on the example JSON files.
 
 ## Known Issues
-
-- I don't advise trusting on the HP output per character as it fluctuates heavily throughout the match. This is more so a device to figure out which player got KO'd.
 
 ## How does it work?
 

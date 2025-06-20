@@ -1,9 +1,0 @@
-mss
-pygetwindow
-Pillow
-opencv-python
-numpy
-websockets
-easyocr
-pygame
-obsws-python
