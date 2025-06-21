@@ -116,9 +116,7 @@ def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):
             pixel = img.getpixel((int(62 * scale_x), int(840 * scale_y)))
             is_online_match = True if core.is_within_deviation(pixel, target_color, deviation) or core.is_within_deviation(pixel, target_color2, 0.1) else False
             if not detect_characters(payload, img, scale_x, scale_y, is_online_match):
-                payload['state'] = 'in_game'
-                if payload['state'] != previous_states[-1]:
-                    previous_states.append(payload['state'])
+                payload['state'] = previous_states[-2]
     return
 
 round_start_lock = False
@@ -183,9 +181,9 @@ ko_passes = [0, 0]
 def detect_ko(payload:dict, img, scale_x:float, scale_y:float):
     global ko_passes
     if len([p for p in ko_passes if p > 3]) > 0: return
-    pixel = img.getpixel((int(770 * scale_x), int(500 * scale_y))) # KO
-    target_color = (230, 237, 235)
-    if not core.is_within_deviation(pixel, target_color, 0.2): return
+    # pixel = img.getpixel((int(770 * scale_x), int(500 * scale_y))) # KO
+    # target_color = (230, 237, 235)
+    # if not core.is_within_deviation(pixel, target_color, 0.2): return
 
     pixel = img.getpixel((int(870 * scale_x), int(96 * scale_y)))
     pixel2 = img.getpixel((int(850 * scale_x), int(63 * scale_y)))
@@ -235,7 +233,7 @@ def detect_results(payload:dict, img, scale_x:float, scale_y:float):
 
 states_to_functions = {
     None: [detect_character_select_screen, detect_versus_screen],
-    "character_select": [detect_versus_screen],
+    "character_select": [detect_versus_screen, detect_round_start],
     "loading": [detect_round_start],
     "in_game": [detect_character_select_screen, detect_round_start, detect_ko, detect_results],
     "game_end": [detect_results, detect_character_select_screen, detect_round_start, detect_versus_screen],
