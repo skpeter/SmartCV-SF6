@@ -39,12 +39,14 @@ def detect_character_select_screen(payload:dict, img, scale_x:float, scale_y:flo
     target_color2 = (4, 65, 249)  #blue
 
     deviation = 0.15
-    # if config.getboolean('settings', 'debug_mode', fallback=False):
-    #     print("Character select screen pixels - player 1:", pixel, "player 2:", pixel2)
+    if config.getboolean('settings', 'debug_mode', fallback=False):
+        print("Character select screen pixels - player 1:", pixel, "player 2:", pixel2)
     
     if (core.is_within_deviation(pixel, target_color, deviation)
     and core.is_within_deviation(pixel2, target_color2, deviation)):
         payload['state'] = "character_select"
+        if payload['round'] == 0:
+            for player in payload['players']: player['name'] = None
         core.print_with_time("- Character select screen detected")
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
@@ -112,7 +114,7 @@ def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):
                 player['rounds'] = 0
                 player['character'] = None
             pixel = img.getpixel((int(62 * scale_x), int(840 * scale_y)))
-            is_online_match = True if core.is_within_deviation(pixel, target_color, deviation) or core.is_within_deviation(pixel, target_color2, deviation) else False
+            is_online_match = True if core.is_within_deviation(pixel, target_color, deviation) or core.is_within_deviation(pixel, target_color2, 0.1) else False
             if not detect_characters(payload, img, scale_x, scale_y, is_online_match):
                 payload['state'] = previous_states[-2]
     return
@@ -179,19 +181,25 @@ ko_passes = [0, 0]
 def detect_ko(payload:dict, img, scale_x:float, scale_y:float):
     global ko_passes
     if len([p for p in ko_passes if p > 3]) > 0: return
+    if len([p for p in ko_passes if p == 0]) > 0:
+        pixel = img.getpixel((int(770 * scale_x), int(500 * scale_y))) # KO
+        target_color = (230, 237, 235)
+        if not core.is_within_deviation(pixel, target_color, 0.2): return
 
     pixel = img.getpixel((int(870 * scale_x), int(96 * scale_y)))
-    pixel2 = img.getpixel((int(1049 * scale_x), int(96 * scale_y)))
+    pixel2 = img.getpixel((int(850 * scale_x), int(63 * scale_y)))
+    pixel3 = img.getpixel((int(1049 * scale_x), int(96 * scale_y)))
+    pixel4 = img.getpixel((int(1074 * scale_x), int(63 * scale_y)))
     if config.getboolean('settings', 'debug_mode', fallback=False):
-        print("KO detection pixels:", pixel, pixel2, "KO Check:", ko_passes)
-    dark_bar1 = True if sum(pixel) < (475 - (75 * ko_passes[0])) else False
-    dark_bar2 = True if sum(pixel2) < (475 - (75 * ko_passes[1])) else False
+        print("KO detection pixels:", max(sum(pixel), sum(pixel2)), max(sum(pixel3), sum(pixel4)), "KO Check:", ko_passes)
+    dark_bar1 = True if max(sum(pixel), sum(pixel2)) < (500 - (100 * ko_passes[0])) else False
+    dark_bar2 = True if max(sum(pixel3), sum(pixel4)) < (500 - (100 * ko_passes[1])) else False
     if dark_bar1 ^ dark_bar2:
         if dark_bar1: ko_passes[1] += 1
         if dark_bar2: ko_passes[0] += 1
         if ko_passes[0] > 3 or ko_passes[1] > 3:
             core.print_with_time("K.O.", end=" ")
-            winner = 0 if ko_passes[0] > 3 else 1
+            winner = 0 if ko_passes[0] > 0 else 1
             payload['players'][winner]['rounds'] += 1
             print(f"by {payload['players'][winner]['character']}")
             if payload['players'][0]['rounds'] == 2 or payload['players'][1]['rounds'] == 2:
@@ -210,12 +218,11 @@ def detect_results(payload:dict, img, scale_x:float, scale_y:float):
     if payload['players'][0]['games'] > 0 or payload['players'][1]['games'] > 0: return
     # this function only works when players don't mash the result screen so only really viable to validate end of a set 
     pixel = img.getpixel((int(963 * scale_x), int(855 * scale_y)))
-    pixel2 = img.getpixel((1 , int(640 * scale_y)))
-    pixel3 = img.getpixel((int(1919 * scale_x), int(640 * scale_y)))
+    pixel2 = img.getpixel((int(784 * scale_x), int(927 * scale_y))) # win rate
     target_color = (173, 161, 157)
-    target_color2 = (47, 111, 185)
-    target_color3 = (176, 39, 109)
-    if core.is_within_deviation(pixel, target_color, 0.2) and core.is_within_deviation(pixel2, target_color2, 0.2) and core.is_within_deviation(pixel3, target_color3, 0.2):
+    target_color2 = (164, 16, 86)
+    target_color3 = (48, 71, 187)
+    if core.is_within_deviation(pixel, target_color, 0.25) and core.is_within_deviation(pixel2, target_color2, 0.25) and core.is_within_deviation(pixel2, target_color3, 0.25):
         result = core.read_text(img, (int(912 * scale_x), int(833 * scale_y), int(100 * scale_x), int(50 * scale_y)), low_text=0.2)
         if result and len(result) > 1: 
             if config.getboolean('settings', 'debug_mode', fallback=False): 
