@@ -214,7 +214,7 @@ def detect_ko(payload:dict, img, scale_x:float, scale_y:float):
 
 def detect_results(payload:dict, img, scale_x:float, scale_y:float):
     if len([player for player in payload['players'] if player['rounds'] == 2]): return
-    if payload['players'][0]['games'] > 0 or payload['players'][1]['games'] > 0: return
+    if int(payload['players'][0]['games']) > 0 or int(payload['players'][1]['games']) > 0: return
     # this function only works when players don't mash the result screen so only really viable to validate end of a set 
     pixel = img.getpixel((int(963 * scale_x), int(855 * scale_y)))
     pixel2 = img.getpixel((int(784 * scale_x), int(927 * scale_y))) # win rate
