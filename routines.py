@@ -46,7 +46,6 @@ def detect_character_select_screen(payload:dict, img, scale_x:float, scale_y:flo
     and core.is_within_deviation(pixel2, target_color2, deviation)):
         payload['state'] = "character_select"
         core.print_with_time("- Character select screen detected")
-        for player in payload['players']: player['name'] = None
         if payload['state'] != previous_states[-1]:
             previous_states.append(payload['state'])
     return
@@ -82,8 +81,9 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float, is_online
             c2, _ = findBestMatch(characters[1], sf6.characters)
             t1 = characters[2]
             t2 = characters[3]
+        payload['players'][0]['name'], payload['players'][1]['name'] = t1, t2
     if not c1: return False
-    payload['players'][0]['character'], payload['players'][1]['character'], payload['players'][0]['name'], payload['players'][1]['name'] = c1, c2, t1, t2
+    payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
     core.print_with_time(f"{payload['players'][0]['name'] if payload['players'][0]['name'] else "Player 1"} as:", c1)
     core.print_with_time(f"{payload['players'][1]['name'] if payload['players'][1]['name'] else "Player 2"} as:", c2)
     return True
@@ -184,8 +184,8 @@ def detect_ko(payload:dict, img, scale_x:float, scale_y:float):
     pixel2 = img.getpixel((int(1049 * scale_x), int(96 * scale_y)))
     if config.getboolean('settings', 'debug_mode', fallback=False):
         print("KO detection pixels:", pixel, pixel2, "KO Check:", ko_passes)
-    dark_bar1 = True if sum(pixel) < (485 - (75* ko_passes[0])) else False
-    dark_bar2 = True if sum(pixel2) < (485 - (75* ko_passes[1])) else False
+    dark_bar1 = True if sum(pixel) < (475 - (75 * ko_passes[0])) else False
+    dark_bar2 = True if sum(pixel2) < (475 - (75 * ko_passes[1])) else False
     if dark_bar1 ^ dark_bar2:
         if dark_bar1: ko_passes[1] += 1
         if dark_bar2: ko_passes[0] += 1
@@ -215,7 +215,7 @@ def detect_results(payload:dict, img, scale_x:float, scale_y:float):
     target_color = (173, 161, 157)
     target_color2 = (47, 111, 185)
     target_color3 = (176, 39, 109)
-    if core.is_within_deviation(pixel, target_color, 0.1) and core.is_within_deviation(pixel2, target_color2, 0.1) and core.is_within_deviation(pixel3, target_color3, 0.1):
+    if core.is_within_deviation(pixel, target_color, 0.2) and core.is_within_deviation(pixel2, target_color2, 0.2) and core.is_within_deviation(pixel3, target_color3, 0.2):
         result = core.read_text(img, (int(912 * scale_x), int(833 * scale_y), int(100 * scale_x), int(50 * scale_y)), low_text=0.2)
         if result and len(result) > 1: 
             if config.getboolean('settings', 'debug_mode', fallback=False): 
