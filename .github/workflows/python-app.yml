@@ -47,7 +47,7 @@ jobs:
         echo "__version__ = '${{ github.run_number }}'" > core/build_info.py
 
     - name: Build with PyInstaller
-      run: pyinstaller core\main.spec --clean --noconfirm
+      run: pyinstaller core\main.spec --clean --noconfirm --log-level=DEBUG
 
     - name: Copy config file and images
       run: |
