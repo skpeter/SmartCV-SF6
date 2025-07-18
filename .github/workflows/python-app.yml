@@ -53,6 +53,9 @@ jobs:
       run: |
         copy core\config.ini.example dist\smartcv\config.ini
         mkdir dist\smartcv\img
+        copy img\0.png dist\smartcv\img\0.png
+        copy img\1.png dist\smartcv\img\1.png
+        copy img\2.png dist\smartcv\img\2.png
     - name: Override default config.ini settings for SmartCV-RoA2
       shell: pwsh
       run: |
