@@ -84,8 +84,8 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float, is_online
         payload['players'][0]['name'], payload['players'][1]['name'] = t1, t2
     if not c1: return False
     payload['players'][0]['character'], payload['players'][1]['character'] = c1, c2
-    core.print_with_time(f"{payload['players'][0]['name'] if payload['players'][0]['name'] else "Player 1"} as:", c1)
-    core.print_with_time(f"{payload['players'][1]['name'] if payload['players'][1]['name'] else "Player 2"} as:", c2)
+    core.print_with_time(f"{payload['players'][0]['name'] if payload['players'][0]['name'] else 'Player 1'} as:", c1)
+    core.print_with_time(f"{payload['players'][1]['name'] if payload['players'][1]['name'] else 'Player 2'} as:", c2)
     return True
 
 def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):

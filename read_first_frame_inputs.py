@@ -73,6 +73,9 @@ def main():
         get_p2_content_insets,
         detect_input_directions_for_rows,
         detect_buttons_for_rows,
+        get_p2_direction_zone_crops,
+        get_region_cell_grid,
+        read_inputs_from_cell_grid,
     )
     direction_enabled = config.getboolean("input_display", "direction_enabled", fallback=False)
     allowlist = "0123456789NLPKMH+- "
@@ -223,28 +226,59 @@ def main():
         crop1 = get_region_crop_np(img, region1_content, contrast=2)
         rw1, rh1 = region1_content[2], region1_content[3]
         rw2, rh2 = region2_eff[2], region2_eff[3]
-        # P2: read each column per row (Btn, Dir, Frm) for full input
-        if rb2 is not None and len(rb2) == len(rows2):
+        # Crop-then-read: build cell grid and read from stored crops (same as detector_crop.png)
+        use_cell_grid = config.getboolean("input_display", "use_cell_grid_reading", fallback=False)
+        if use_cell_grid and rb1 is not None and rb2 is not None and len(rb1) == len(rows1) and len(rb2) == len(rows2):
+            grid_p1 = get_region_cell_grid(crop1, rb1, rw1, rh1, "p1", p1_frm_ratio)
+            grid_p2 = get_region_cell_grid(crop2, rb2, rw2, rh2, "p2", 0.35)
+            dirs1, btns1, frame_texts1 = read_inputs_from_cell_grid(grid_p1, "p1", template_key="p1", frame_contrast=2.0, frame_white_threshold=p2_white_threshold)
+            dirs2, btns2, frame_texts2 = read_inputs_from_cell_grid(grid_p2, "p2", template_key="p2", p2_button_rows_oldest_6=p2_button_rows_oldest_6, frame_contrast=2.0, frame_white_threshold=p2_white_threshold)
+            rows1 = [((rb1[i][0] + rb1[i][1]) // 2, frame_texts1[i]) for i in range(len(rb1))]
+            rows2 = [((rb2[i][0] + rb2[i][1]) // 2, frame_texts2[i]) for i in range(len(rb2))]
+            rows2_btn_ocr = None
+            rows2_dir_ocr = None
+        else:
+            use_cell_grid = False
+        # P2: read each column per row (Btn, Dir, Frm) for full input (when not using cell grid)
+        if not use_cell_grid and rb2 is not None and len(rb2) == len(rows2):
             rows2_btn_ocr = read_p2_buttons_column(img, region2_eff, rb2, contrast=2, low_text=0.15, white_on_dark=p2_white_on_dark, white_threshold=p2_white_threshold)
             rows2_dir_ocr = read_p2_direction_column(img, region2_eff, rb2, contrast=2, low_text=0.15, white_on_dark=p2_white_on_dark, white_threshold=p2_white_threshold)
+        else:
+            rows2_btn_ocr = None
+            rows2_dir_ocr = None
     else:
+        use_cell_grid = False
+        rows2_btn_ocr = None
+        rows2_dir_ocr = None
         rows1 = read_text_with_positions(img, region1, contrast=2, allowlist=allowlist, low_text=0.3)
         rows2 = read_text_with_positions(img, region2, contrast=2, allowlist=allowlist, low_text=0.3)
         _, _, rw2, rh2 = region2
-    if direction_enabled:
-        dirs1 = detect_input_directions_for_rows(crop1, [r[0] for r in rows1], rw1, rh1, template_key="p1") if rows1 else []
-        dirs2 = detect_input_directions_for_rows(crop2, [r[0] for r in rows2], rw2, rh2, template_key="p2") if rows2 else []
-    else:
-        dirs1 = [None] * len(rows1) if rows1 else []
-        dirs2 = [None] * len(rows2) if rows2 else []
-    btns1 = detect_buttons_for_rows(crop1, [r[0] for r in rows1], rw1, rh1) if rows1 else []
-    btns2 = detect_buttons_for_rows(crop2, [r[0] for r in rows2], rw2, rh2, is_p2=True) if rows2 else []
-    # P2: only rows listed in p2_button_rows_oldest_6 have button circles in the 6 oldest; rest = no button
-    if rows2 and p2_button_rows_oldest_6 and len(btns2) >= len(rows2):
-        n2_btn = len(rows2)
-        for i in range(max(0, n2_btn - 6), n2_btn):
-            if (i + 1) not in p2_button_rows_oldest_6:
-                btns2[i] = None
+    if not use_cell_grid:
+        if direction_enabled:
+            dirs1 = detect_input_directions_for_rows(crop1, [r[0] for r in rows1], rw1, rh1, template_key="p1") if rows1 else []
+            if rows2 and rb2 is not None and len(rb2) == len(rows2):
+                row_centers_p2 = [(rb2[i][0] + rb2[i][1]) // 2 for i in range(len(rows2))]
+                dirs2 = detect_input_directions_for_rows(crop2, row_centers_p2, rw2, rh2, template_key="p2", row_bounds=rb2)
+            else:
+                dirs2 = detect_input_directions_for_rows(crop2, [r[0] for r in rows2], rw2, rh2, template_key="p2") if rows2 else []
+            if rows2 and rb2 is not None and len(rb2) == len(rows2) and config.getboolean("input_display", "save_p2_direction_zones", fallback=False):
+                zones = get_p2_direction_zone_crops(crop2, rb2, rw2, rh2, num_oldest=6)
+                debug_dir = os.path.join(os.path.dirname(__file__), "debug")
+                os.makedirs(debug_dir, exist_ok=True)
+                for row_1based, zone in zones:
+                    path = os.path.join(debug_dir, f"p2_dir_row{row_1based}.png")
+                    cv2.imwrite(path, zone)
+                print("  [debug] Saved P2 direction zones to debug/p2_dir_row14.png ... p2_dir_row19.png")
+        else:
+            dirs1 = [None] * len(rows1) if rows1 else []
+            dirs2 = [None] * len(rows2) if rows2 else []
+        btns1 = detect_buttons_for_rows(crop1, [r[0] for r in rows1], rw1, rh1) if rows1 else []
+        btns2 = detect_buttons_for_rows(crop2, [r[0] for r in rows2], rw2, rh2, is_p2=True) if rows2 else []
+        if rows2 and p2_button_rows_oldest_6 and len(btns2) >= len(rows2):
+            n2_btn = len(rows2)
+            for i in range(max(0, n2_btn - 6), n2_btn):
+                if (i + 1) not in p2_button_rows_oldest_6:
+                    btns2[i] = None
 
     print("First frame — inputs")
     print("====================")
@@ -298,6 +332,9 @@ def main():
             frm = (rows2[i][1] or "").strip() or "—"
             oldest_6_rows.append(f"Row {i+1}: Btn={btn} Dir={dir_val} Frm={frm}")
         print("  → Oldest 6 P2 inputs (oldest last):", " | ".join(oldest_6_rows))
+        print("  Oldest 6 P2 (listed 6th-oldest → 1st-oldest):")
+        for j, s in enumerate(oldest_6_rows, 1):
+            print(f"    {j}. {s}")
         print()
     print("P1 rows (top = newest). Each row = Direction | Button | Frame count:")
     print("  (Direction = off; Button = color H/M/L; Frame count = OCR)")
