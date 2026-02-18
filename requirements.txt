@@ -1,0 +1,15 @@
+obsws-python
+
+# SmartCV-SF6 (and core) dependencies.
+# Install: pip install -r requirements.txt
+# PyTorch: install separately from https://pytorch.org (choose Mac + CPU or MPS).
+
+obsws-python
+pygetwindow
+mss
+easyocr
+numpy
+opencv-python
+Pillow
+requests
+websockets
