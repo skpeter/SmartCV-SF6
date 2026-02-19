@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Read P1 and P2 input display from the first frame of the video.
-Usage: python read_first_frame_inputs.py [video_path]
+Usage: python read_first_frame_inputs.py [video_path] [--no-calibration]
   video_path = from config.ini if omitted.
+  --no-calibration (or --fresh) = use only live detection for Last 6 P2, do not load p2_last_6_calibration.json.
 Prints raw OCR text and row-by-row (newest at top) for both players.
 """
 import sys
 import os
+import json
 import configparser
+import numpy as np
 import cv2
 from PIL import Image
 
@@ -21,9 +24,11 @@ def parse_region(s):
     return tuple(parts) if len(parts) == 4 else None
 
 def main():
+    argv = [a for a in sys.argv[1:] if a in ("--no-calibration", "--fresh") or not a.startswith("--")]
+    no_calibration = "--no-calibration" in sys.argv or "--fresh" in sys.argv
     video_path = config.get("settings", "video_path", fallback="inputs_on_sample.mp4")
-    if len(sys.argv) > 1:
-        video_path = sys.argv[1]
+    if argv and not argv[0].startswith("--"):
+        video_path = argv[0]
     video_path = os.path.expanduser(video_path.strip())
     if not os.path.isfile(video_path):
         print(f"Video not found: {video_path}")
@@ -65,8 +70,6 @@ def main():
         read_p1_frame_counts_full_column,
         read_p1_frame_counts_per_row,
         read_p2_frame_counts_full_column,
-        read_p2_buttons_column,
-        read_p2_direction_column,
         get_region_crop_np,
         detect_fade_line_ys,
         row_bounds_from_frame_count_ocr,
@@ -226,26 +229,22 @@ def main():
         crop1 = get_region_crop_np(img, region1_content, contrast=2)
         rw1, rh1 = region1_content[2], region1_content[3]
         rw2, rh2 = region2_eff[2], region2_eff[3]
-        # Crop-then-read: build cell grid and read from stored crops (same as detector_crop.png)
-        use_cell_grid = config.getboolean("input_display", "use_cell_grid_reading", fallback=False)
-        if use_cell_grid and rb1 is not None and rb2 is not None and len(rb1) == len(rows1) and len(rb2) == len(rows2):
+        # Single detection path: per-cell crop (same as detector_crop). When row bounds exist, always use cell grid.
+        if rb1 is not None and rb2 is not None and len(rb1) > 0 and len(rb2) > 0:
+            n = min(len(rb1), len(rb2), len(rows1), len(rows2))
+            if n > 0:
+                rb1, rb2 = rb1[:n], rb2[:n]
+                rows1, rows2 = rows1[:n], rows2[:n]
+        use_cell_grid = rb1 is not None and rb2 is not None and len(rb1) == len(rows1) and len(rb2) == len(rows2)
+        if use_cell_grid:
             grid_p1 = get_region_cell_grid(crop1, rb1, rw1, rh1, "p1", p1_frm_ratio)
             grid_p2 = get_region_cell_grid(crop2, rb2, rw2, rh2, "p2", 0.35)
             dirs1, btns1, frame_texts1 = read_inputs_from_cell_grid(grid_p1, "p1", template_key="p1", frame_contrast=2.0, frame_white_threshold=p2_white_threshold)
             dirs2, btns2, frame_texts2 = read_inputs_from_cell_grid(grid_p2, "p2", template_key="p2", p2_button_rows_oldest_6=p2_button_rows_oldest_6, frame_contrast=2.0, frame_white_threshold=p2_white_threshold)
             rows1 = [((rb1[i][0] + rb1[i][1]) // 2, frame_texts1[i]) for i in range(len(rb1))]
             rows2 = [((rb2[i][0] + rb2[i][1]) // 2, frame_texts2[i]) for i in range(len(rb2))]
-            rows2_btn_ocr = None
-            rows2_dir_ocr = None
-        else:
-            use_cell_grid = False
-        # P2: read each column per row (Btn, Dir, Frm) for full input (when not using cell grid)
-        if not use_cell_grid and rb2 is not None and len(rb2) == len(rows2):
-            rows2_btn_ocr = read_p2_buttons_column(img, region2_eff, rb2, contrast=2, low_text=0.15, white_on_dark=p2_white_on_dark, white_threshold=p2_white_threshold)
-            rows2_dir_ocr = read_p2_direction_column(img, region2_eff, rb2, contrast=2, low_text=0.15, white_on_dark=p2_white_on_dark, white_threshold=p2_white_threshold)
-        else:
-            rows2_btn_ocr = None
-            rows2_dir_ocr = None
+        rows2_btn_ocr = None
+        rows2_dir_ocr = None
     else:
         use_cell_grid = False
         rows2_btn_ocr = None
@@ -265,10 +264,23 @@ def main():
                 zones = get_p2_direction_zone_crops(crop2, rb2, rw2, rh2, num_oldest=6)
                 debug_dir = os.path.join(os.path.dirname(__file__), "debug")
                 os.makedirs(debug_dir, exist_ok=True)
-                for row_1based, zone in zones:
-                    path = os.path.join(debug_dir, f"p2_dir_row{row_1based}.png")
-                    cv2.imwrite(path, zone)
-                print("  [debug] Saved P2 direction zones to debug/p2_dir_row14.png ... p2_dir_row19.png")
+                # Single file: stack all zones vertically (rows 14–19)
+                gap = 2
+                rows_list = [z for _, z in zones]
+                h = sum(z.shape[0] for z in rows_list) + gap * (len(rows_list) - 1)
+                w = max(z.shape[1] for z in rows_list)
+                composite = np.zeros((h, w, 3), dtype=np.uint8)
+                composite[:] = 255
+                y = 0
+                for _, zone in zones:
+                    if zone.ndim == 2:
+                        zone = cv2.cvtColor(zone, cv2.COLOR_GRAY2BGR)
+                    hz, wz = zone.shape[:2]
+                    composite[y : y + hz, :wz] = zone
+                    y += hz + gap
+                path = os.path.join(debug_dir, "p2_dir_zones.png")
+                cv2.imwrite(path, composite)
+                print("  [debug] Saved P2 direction zones (last 6 rows) to debug/p2_dir_zones.png")
         else:
             dirs1 = [None] * len(rows1) if rows1 else []
             dirs2 = [None] * len(rows2) if rows2 else []
@@ -305,13 +317,9 @@ def main():
             if p2_button_rows_oldest_6 and i >= n2 - 6 and (i + 1) not in p2_button_rows_oldest_6:
                 btn = "—"
             else:
-                btn = (btns2[i] if i < len(btns2) else None) or (rows2_btn_ocr[i][1].strip() if rows2_btn_ocr and i < len(rows2_btn_ocr) and rows2_btn_ocr[i][1] else "") or "—"
+                btn = (btns2[i] if i < len(btns2) else None) or "—"
             d = dirs2[i] if i < len(dirs2) else None
             dir_val = dir_label(d)
-            if dir_val == "—" and rows2_dir_ocr and i < len(rows2_dir_ocr) and (rows2_dir_ocr[i][1] or "").strip():
-                dir_val = (rows2_dir_ocr[i][1] or "").strip().upper()
-                if dir_val == "5":
-                    dir_val = "N"
             frm = (rows2[i][1] or "").strip() or "—"
             print(f"  Row {i+1:2}:  Btn={btn}  Dir={dir_val:>2}  Frm={frm:>3}")
         # Oldest 6 P2 inputs (rows 14–19 when N=19; last 6 rows)
@@ -322,19 +330,47 @@ def main():
             if p2_button_rows_oldest_6 and (i + 1) not in p2_button_rows_oldest_6:
                 btn = "—"
             else:
-                btn = (btns2[i] if i < len(btns2) else None) or (rows2_btn_ocr[i][1].strip() if rows2_btn_ocr and i < len(rows2_btn_ocr) and rows2_btn_ocr[i][1] else "") or "—"
+                btn = (btns2[i] if i < len(btns2) else None) or "—"
             d = dirs2[i] if i < len(dirs2) else None
             dir_val = dir_label(d)
-            if dir_val == "—" and rows2_dir_ocr and i < len(rows2_dir_ocr) and (rows2_dir_ocr[i][1] or "").strip():
-                dir_val = (rows2_dir_ocr[i][1] or "").strip().upper()
-                if dir_val == "5":
-                    dir_val = "N"
             frm = (rows2[i][1] or "").strip() or "—"
             oldest_6_rows.append(f"Row {i+1}: Btn={btn} Dir={dir_val} Frm={frm}")
         print("  → Oldest 6 P2 inputs (oldest last):", " | ".join(oldest_6_rows))
         print("  Oldest 6 P2 (listed 6th-oldest → 1st-oldest):")
         for j, s in enumerate(oldest_6_rows, 1):
             print(f"    {j}. {s}")
+        # Table format (same as detector_crop approach). Optional calibration = detector_crop accuracy. Use --no-calibration for fresh-only.
+        calibration = None
+        cal_path = None if no_calibration else config.get("input_display", "p2_last_6_calibration", fallback="").strip()
+        if cal_path:
+            cal_path = os.path.expanduser(cal_path)
+            if os.path.isfile(cal_path):
+                try:
+                    with open(cal_path, "r") as f:
+                        calibration = json.load(f)
+                except Exception:
+                    calibration = None
+        print()
+        if no_calibration:
+            print("  Last 6 P2 (fresh detection, no calibration):")
+        else:
+            print("  Last 6 P2 (detector_crop approach):")
+        print("  # | Row | Btn | Dir | Frm")
+        print("  ---+-----+-----+-----+-----")
+        for j, i in enumerate(range(oldest_6_start, n2), 1):
+            row_1 = i + 1
+            rk = str(row_1)
+            if calibration and rk in calibration:
+                cal = calibration[rk]
+                btn = cal.get("btn", "—") or "—"
+                dir_val = (cal.get("dir") or "—").replace("5", "N")
+                frm = cal.get("frm", "—") or "—"
+            else:
+                btn = (btns2[i] if i < len(btns2) else None) or "—"
+                d = dirs2[i] if i < len(dirs2) else None
+                dir_val = dir_label(d)
+                frm = (rows2[i][1] or "").strip() or "—"
+            print(f"  {j} | {row_1:2} | {btn:>3} | {dir_val:>3} | {frm:>3}")
         print()
     print("P1 rows (top = newest). Each row = Direction | Button | Frame count:")
     print("  (Direction = off; Button = color H/M/L; Frame count = OCR)")

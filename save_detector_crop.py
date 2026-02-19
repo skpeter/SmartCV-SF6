@@ -12,7 +12,9 @@ Usage:
   row: 1-based row (1=newest, 19=oldest) — any row
   column: btn | dir | frm — any column
 
-Output: debug/detector_crop.png (overwrites each run; use -o for a different path). With --save-32 for dir: debug/detector_crop_32x32.png
+Output: only one file is updated per run — debug/detector_crop.png (overwrites each time).
+  Use -o to override path if needed. With --save-32 for dir column, also writes debug/detector_crop_32x32.png.
+  Do not create multiple files (e.g. detector_crop_r14_btn.png); always overwrite the same detector_crop.png.
 """
 import sys
 import os

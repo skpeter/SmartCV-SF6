@@ -162,3 +162,7 @@ cython_debug/
 config.ini
 tags.csv
 dev/*
+
+# Debug: one file per purpose (no per-row/per-cell copies)
+debug/detector_crop_r*.png
+debug/p2_dir_row*.png
