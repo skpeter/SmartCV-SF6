@@ -180,25 +180,42 @@ ko_passes = [0, 0]
 ko_passes = [0, 0]
 def detect_ko(payload:dict, img, scale_x:float, scale_y:float):
     global ko_passes
-    if len([p for p in ko_passes if p > 3]) > 0: return
-    # pixel = img.getpixel((int(770 * scale_x), int(500 * scale_y))) # KO
-    # target_color = (230, 237, 235)
-    # if not core.is_within_deviation(pixel, target_color, 0.2): return
-
-    pixel = img.getpixel((int(870 * scale_x), int(96 * scale_y)))
-    pixel2 = img.getpixel((int(850 * scale_x), int(63 * scale_y)))
-    pixel3 = img.getpixel((int(1049 * scale_x), int(96 * scale_y)))
+    if len([p for p in ko_passes if p > 1]) > 0: return
+    # we need to detect if the drive is visible this means the HUD is being displayed and not being obstructed
+    drive_pixel = img.getpixel((int(888 * scale_x), int(126 * scale_y)))
+    drive_pixel2 = img.getpixel((int(1031 * scale_x), int(126 * scale_y)))
+    drive_color = (95, 207, 40)
+    drive_color2 = (218, 165, 44)
+    drive_color3 = (158, 105, 56)
+    drive_color4 = (240, 224, 219)
+    conditions = [
+        core.is_within_deviation(drive_pixel, drive_color, 0.09),
+        core.is_within_deviation(drive_pixel, drive_color2, 0.09),
+        core.is_within_deviation(drive_pixel, drive_color3, 0.1),
+        core.is_within_deviation(drive_pixel, drive_color4, 0.15),
+        core.is_within_deviation(drive_pixel2, drive_color, 0.09),
+        core.is_within_deviation(drive_pixel2, drive_color2, 0.09),
+        core.is_within_deviation(drive_pixel2, drive_color3, 0.1),
+        core.is_within_deviation(drive_pixel2, drive_color4, 0.15)
+    ]
+    if not any(conditions):
+        if config.getboolean('settings', 'debug_mode', fallback=False):
+            print("KO detection skipped - HUD is obstructed")
+        return
+    # pixel = img.getpixel((int(870 * scale_x), int(96 * scale_y)))
+    pixel2 = img.getpixel((int(847 * scale_x), int(63 * scale_y)))
+    # pixel3 = img.getpixel((int(1049 * scale_x), int(96 * scale_y)))
     pixel4 = img.getpixel((int(1074 * scale_x), int(63 * scale_y)))
     if config.getboolean('settings', 'debug_mode', fallback=False):
-        print("KO detection pixels:", max(sum(pixel), sum(pixel2)), max(sum(pixel3), sum(pixel4)), "KO Check:", ko_passes)
-    dark_bar1 = True if max(sum(pixel), sum(pixel2)) < (500 - (100 * ko_passes[0])) else False
-    dark_bar2 = True if max(sum(pixel3), sum(pixel4)) < (500 - (100 * ko_passes[1])) else False
+        print("KO detection pixels:", sum(pixel2), sum(pixel4))
+    dark_bar1 = True if sum(pixel2) < 450 else False
+    dark_bar2 = True if sum(pixel4) < 450 else False
     if dark_bar1 ^ dark_bar2:
         if dark_bar1: ko_passes[1] += 1
         if dark_bar2: ko_passes[0] += 1
-        if ko_passes[0] > 3 or ko_passes[1] > 3:
+        if ko_passes[0] > 1 or ko_passes[1] > 1:
             core.print_with_time("K.O.", end=" ")
-            winner = 0 if ko_passes[0] > 0 else 1
+            winner = 0 if ko_passes[0] > 1 else 1
             payload['players'][winner]['rounds'] += 1
             print(f"by {payload['players'][winner]['character']}")
             if payload['players'][0]['rounds'] == 2 or payload['players'][1]['rounds'] == 2:
