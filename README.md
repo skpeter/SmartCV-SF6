@@ -33,7 +33,7 @@ If you are running the game on the same device you are running SmartCV, you pret
 SmartCV reads game data directly from the OBS video source you put it on through OBS Websockets. **Make sure you have OBS Websocket enabled and configured before continuing**. Open your `config.ini` file, find a setting called `source_title`, insert the name of your OBS source, and that's it! Make sure the other OBS settings are correct so SmartCV can connect with OBS. `width` and `height` are the resolution of the image OBS sends. If you want to save up on some CPU usage, you can lower this resolution (as long as it's 16:9 aspect ration), however some things may not behave like normal if you do.
 
 ## Step 3: Usage
-- To run the GPU version of the app, open the `smartcv.bat` file. To run the CPU version just open `smartcv.exe`.
+- To run the GPU/source version, open a launch script: `smartcv.bat` (Windows), `smartcv.sh` (Linux), `smartcv.command` (macOS). Git clone: same files live under `core/`. CPU/release: `smartcv.exe`.
 **From here all you need to do is follow the on-screen instructions for the game detection to start.**
 **If using OBS, make sure it is open and do not disable the game capture source!**
 
