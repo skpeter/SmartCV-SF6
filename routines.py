@@ -10,6 +10,9 @@ client_name = "smartcv-sf6"
 config = configparser.ConfigParser()
 config.read('config.ini')
 previous_states = [None] # list of previous states to be used for state change detection
+char_ocr_attempts = 0
+CHAR_OCR_MAX_TRIES = 5
+_versus_is_online = False
 
 payload = {
     "state": None,
@@ -52,12 +55,17 @@ def detect_character_select_screen(payload:dict, img, scale_x:float, scale_y:flo
             previous_states.append(payload['state'])
     return
 
-def detect_characters(payload:dict, img, scale_x:float, scale_y:float, is_online_match=False):
+def detect_characters(payload:dict, img, scale_x:float, scale_y:float, is_online_match=None):
+    global char_ocr_attempts
     t1, t2, c1, c2 = None, None, None, None
     characters = []
     stitched = []
     img = np.array(img)
     if payload['state'] != "loading" or payload['players'][0]['character']: return
+    if char_ocr_attempts >= CHAR_OCR_MAX_TRIES: return
+    if is_online_match is None:
+        is_online_match = _versus_is_online
+    char_ocr_attempts += 1
     if not is_online_match:
         try:
             x,y,w,h = (int(225 * scale_x), int(915 * scale_y), int(1475 * scale_x), int(90 * scale_y))
@@ -66,7 +74,6 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float, is_online
             cropped = stitched.copy()
             characters = core.read_text(cropped, contrast=2)
             if not characters:
-                payload['state'] = previous_states[-1]
                 return
         except:
             pass
@@ -91,6 +98,7 @@ def detect_characters(payload:dict, img, scale_x:float, scale_y:float, is_online
     return True
 
 def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):
+    global char_ocr_attempts, _versus_is_online
     target_color = (86, 13, 143) #classic icon
     target_color2 = (159, 67, 15) # modern icon
     pixel = img.getpixel((int(62 * scale_x), int(859 * scale_y)))
@@ -113,10 +121,10 @@ def detect_versus_screen(payload:dict, img, scale_x:float, scale_y:float):
             for player in payload['players']:
                 player['rounds'] = 0
                 player['character'] = None
+            char_ocr_attempts = 0
             pixel = img.getpixel((int(62 * scale_x), int(840 * scale_y)))
-            is_online_match = True if core.is_within_deviation(pixel, target_color, deviation) or core.is_within_deviation(pixel, target_color2, 0.1) else False
-            if not detect_characters(payload, img, scale_x, scale_y, is_online_match):
-                payload['state'] = previous_states[-2]
+            _versus_is_online = True if core.is_within_deviation(pixel, target_color, deviation) or core.is_within_deviation(pixel, target_color2, 0.1) else False
+        detect_characters(payload, img, scale_x, scale_y, _versus_is_online)
     return
 
 round_start_lock = False
@@ -251,7 +259,7 @@ def detect_results(payload:dict, img, scale_x:float, scale_y:float):
 states_to_functions = {
     None: [detect_character_select_screen, detect_versus_screen],
     "character_select": [detect_versus_screen, detect_round_start],
-    "loading": [detect_round_start],
+    "loading": [detect_round_start, detect_characters],
     "in_game": [detect_character_select_screen, detect_round_start, detect_ko, detect_results],
     "game_end": [detect_results, detect_character_select_screen, detect_round_start, detect_versus_screen],
 }
